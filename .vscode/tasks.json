@@ -1,0 +1,34 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            "script": "watch",
+            "problemMatcher": {
+                "owner": "webpack",
+                "source": "webpack",
+                "fileLocation": "absolute",
+                "severity": "error",
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^\\[webpack-cli\\]",
+                    "endsPattern": "webpack .* compiled"
+                },
+                "pattern": {
+                    "regexp": "^ERROR in (.*)\\((\\d+),(\\d+)\\)",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3
+                }
+            },
+            "isBackground": true,
+            "presentation": {
+                "reveal": "never"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
