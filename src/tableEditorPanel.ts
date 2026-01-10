@@ -304,6 +304,87 @@ export class TableEditorPanel {
             color: var(--vscode-statusBar-foreground);
             font-size: 12px;
         }
+        .context-menu {
+            display: none;
+            position: fixed;
+            background-color: var(--vscode-menu-background);
+            border: 1px solid var(--vscode-menu-border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            z-index: 1000;
+            min-width: 150px;
+            padding: 4px 0;
+        }
+        .context-menu.visible {
+            display: block;
+        }
+        .context-menu-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            color: var(--vscode-menu-foreground);
+        }
+        .context-menu-item:hover {
+            background-color: var(--vscode-menu-selectionBackground);
+            color: var(--vscode-menu-selectionForeground);
+        }
+        .context-menu-separator {
+            height: 1px;
+            background-color: var(--vscode-menu-separatorBackground);
+            margin: 4px 0;
+        }
+        .dialog-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .dialog-overlay.visible {
+            display: flex;
+        }
+        .dialog {
+            background-color: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-panel-border);
+            padding: 20px;
+            border-radius: 4px;
+            min-width: 250px;
+        }
+        .dialog-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .dialog-content {
+            margin-bottom: 15px;
+        }
+        .dialog-content select {
+            width: 100%;
+            padding: 6px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+        }
+        .dialog-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .dialog-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--vscode-button-border);
+            cursor: pointer;
+        }
+        .dialog-btn-primary {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+        }
+        .dialog-btn-secondary {
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
     </style>
 </head>
 <body>
@@ -314,6 +395,19 @@ export class TableEditorPanel {
         </table>
     </div>
     <div class="status-bar" id="status-bar">Loading...</div>
+    <div class="context-menu" id="context-menu"></div>
+    <div class="dialog-overlay" id="dialog-overlay">
+        <div class="dialog">
+            <div class="dialog-title" id="dialog-title"></div>
+            <div class="dialog-content">
+                <select id="dialog-select"></select>
+            </div>
+            <div class="dialog-buttons">
+                <button class="dialog-btn dialog-btn-secondary" id="dialog-cancel">Cancel</button>
+                <button class="dialog-btn dialog-btn-primary" id="dialog-ok">OK</button>
+            </div>
+        </div>
+    </div>
     
     <script nonce="${nonce}">
         const vscode = acquireVsCodeApi();
@@ -388,11 +482,13 @@ export class TableEditorPanel {
             document.querySelectorAll('.row-header').forEach(header => {
                 header.addEventListener('mousedown', handleRowHeaderMouseDown);
                 header.addEventListener('mouseover', handleRowHeaderMouseOver);
+                header.addEventListener('contextmenu', handleRowHeaderContextMenu);
             });
             
             document.querySelectorAll('.col-header').forEach(header => {
                 header.addEventListener('mousedown', handleColHeaderMouseDown);
                 header.addEventListener('mouseover', handleColHeaderMouseOver);
+                header.addEventListener('contextmenu', handleColHeaderContextMenu);
             });
         }
         
@@ -444,6 +540,7 @@ export class TableEditorPanel {
         
         function handleRowHeaderMouseDown(event) {
             if (isEditing) return;
+            if (event.button === 2) return; // Skip right-click, let contextmenu handle it
             const header = event.target.closest('.row-header');
             if (!header) return;
             
@@ -473,6 +570,7 @@ export class TableEditorPanel {
         
         function handleColHeaderMouseDown(event) {
             if (isEditing) return;
+            if (event.button === 2) return; // Skip right-click, let contextmenu handle it
             const header = event.target.closest('.col-header');
             if (!header) return;
             
@@ -768,6 +866,284 @@ export class TableEditorPanel {
             
             selectSingleCell(newRow, newCol);
         });
+        
+        // Context menu handling
+        let copiedRows = null;
+        let copiedCols = null;
+        
+        function hideContextMenu() {
+            document.getElementById('context-menu').classList.remove('visible');
+        }
+        
+        document.addEventListener('click', hideContextMenu);
+        
+        function showContextMenu(x, y, items) {
+            const menu = document.getElementById('context-menu');
+            menu.innerHTML = items.map(item => {
+                if (item.separator) {
+                    return '<div class="context-menu-separator"></div>';
+                }
+                return '<div class="context-menu-item" data-action="' + item.action + '">' + item.label + '</div>';
+            }).join('');
+            
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            menu.classList.add('visible');
+            
+            menu.querySelectorAll('.context-menu-item').forEach(menuItem => {
+                menuItem.addEventListener('click', (e) => {
+                    const action = e.target.dataset.action;
+                    executeMenuAction(action);
+                    hideContextMenu();
+                });
+            });
+        }
+        
+        function handleRowHeaderContextMenu(event) {
+            event.preventDefault();
+            if (isEditing) return;
+            
+            const header = event.target.closest('.row-header');
+            if (!header) return;
+            
+            const row = parseInt(header.dataset.row);
+            
+            // Select the row if not already selected
+            if (selection.type !== 'row' || row < Math.min(selection.startRow, selection.endRow) || row > Math.max(selection.startRow, selection.endRow)) {
+                const columnCount = tableData[0]?.length || 0;
+                selection = {
+                    startRow: row, startCol: 0,
+                    endRow: row, endCol: columnCount - 1,
+                    activeRow: row, activeCol: 0,
+                    type: 'row'
+                };
+                updateSelectionDisplay();
+            }
+            const minRow = Math.min(selection.startRow, selection.endRow);
+            const maxRow = Math.max(selection.startRow, selection.endRow);
+            const isSingleRow = minRow === maxRow;
+            
+            const items = [
+                { label: isSingleRow ? 'Delete Row' : 'Delete Rows', action: 'deleteRows' },
+                { separator: true },
+                { label: isSingleRow ? 'Copy Row' : 'Copy Rows', action: 'copyRows' }
+            ];
+            
+            // Only show insert copied rows if there are copied rows
+            if (copiedRows && copiedRows.length > 0) {
+                items.push({ label: 'Insert Copied Row(s)', action: 'pasteRows' });
+            }
+            
+            // Only show insert options for single row selection
+            if (isSingleRow) {
+                items.splice(1, 0, { separator: true });
+                items.splice(2, 0, { label: 'Insert Row Above', action: 'insertRowAbove' });
+                items.splice(3, 0, { label: 'Insert Row Below', action: 'insertRowBelow' });
+            }
+            
+            showContextMenu(event.clientX, event.clientY, items);
+        }
+        
+        function handleColHeaderContextMenu(event) {
+            event.preventDefault();
+            if (isEditing) return;
+            
+            const header = event.target.closest('.col-header');
+            if (!header) return;
+            
+            const col = parseInt(header.dataset.col);
+            
+            // Select the column if not already selected
+            if (selection.type !== 'column' || col < Math.min(selection.startCol, selection.endCol) || col > Math.max(selection.startCol, selection.endCol)) {
+                const rowCount = tableData.length;
+                selection = {
+                    startRow: 0, startCol: col,
+                    endRow: rowCount - 1, endCol: col,
+                    activeRow: 0, activeCol: col,
+                    type: 'column'
+                };
+                updateSelectionDisplay();
+            }
+            const minCol = Math.min(selection.startCol, selection.endCol);
+            const maxCol = Math.max(selection.startCol, selection.endCol);
+            const isSingleCol = minCol === maxCol;
+            
+            const items = [
+                { label: isSingleCol ? 'Delete Column' : 'Delete Columns', action: 'deleteCols' },
+                { separator: true },
+                { label: isSingleCol ? 'Copy Column' : 'Copy Columns', action: 'copyCols' }
+            ];
+            
+            // Only show insert copied columns if there are copied columns
+            if (copiedCols && copiedCols.length > 0) {
+                items.push({ label: 'Insert Copied Column(s)', action: 'pasteCols' });
+            }
+            
+            // Only show insert options for single column selection
+            if (isSingleCol) {
+                items.splice(1, 0, { separator: true });
+                items.splice(2, 0, { label: 'Insert Column Left', action: 'insertColLeft' });
+                items.splice(3, 0, { label: 'Insert Column Right', action: 'insertColRight' });
+            }
+            
+            showContextMenu(event.clientX, event.clientY, items);
+        }
+        
+        function executeMenuAction(action) {
+            const minRow = Math.min(selection.startRow, selection.endRow);
+            const maxRow = Math.max(selection.startRow, selection.endRow);
+            const minCol = Math.min(selection.startCol, selection.endCol);
+            const maxCol = Math.max(selection.startCol, selection.endCol);
+            
+            switch (action) {
+                case 'deleteRows':
+                    if (tableData.length > 1) {
+                        tableData.splice(minRow, maxRow - minRow + 1);
+                        notifyChange();
+                        renderTable();
+                        selectSingleCell(Math.min(minRow, tableData.length - 1), 0);
+                    }
+                    break;
+                case 'insertRowAbove':
+                    showInsertDialog('Insert Rows Above', 'row', 10 - tableData.length, (count) => {
+                        for (let i = 0; i < count; i++) {
+                            const newRow = new Array(tableData[0].length).fill('');
+                            tableData.splice(minRow, 0, newRow);
+                        }
+                        notifyChange();
+                        renderTable();
+                        selectSingleCell(minRow, 0);
+                    });
+                    break;
+                case 'insertRowBelow':
+                    showInsertDialog('Insert Rows Below', 'row', 10 - tableData.length, (count) => {
+                        for (let i = 0; i < count; i++) {
+                            const newRow = new Array(tableData[0].length).fill('');
+                            tableData.splice(maxRow + 1 + i, 0, newRow);
+                        }
+                        notifyChange();
+                        renderTable();
+                        selectSingleCell(maxRow + 1, 0);
+                    });
+                    break;
+                case 'copyRows':
+                    copiedRows = [];
+                    for (let r = minRow; r <= maxRow; r++) {
+                        copiedRows.push([...tableData[r]]);
+                    }
+                    copiedCols = null;
+                    updateStatus('Copied ' + copiedRows.length + ' row(s)');
+                    break;
+                case 'pasteRows':
+                    if (copiedRows && copiedRows.length > 0) {
+                        for (let i = 0; i < copiedRows.length; i++) {
+                            tableData.splice(maxRow + 1 + i, 0, [...copiedRows[i]]);
+                        }
+                        notifyChange();
+                        renderTable();
+                        selectSingleCell(maxRow + 1, 0);
+                    }
+                    break;
+                case 'deleteCols':
+                    if (tableData[0].length > 1) {
+                        for (let r = 0; r < tableData.length; r++) {
+                            tableData[r].splice(minCol, maxCol - minCol + 1);
+                        }
+                        notifyChange();
+                        renderTable();
+                        selectSingleCell(0, Math.min(minCol, tableData[0].length - 1));
+                    }
+                    break;
+                case 'insertColLeft':
+                    showInsertDialog('Insert Columns Left', 'column', 10 - tableData[0].length, (count) => {
+                        for (let r = 0; r < tableData.length; r++) {
+                            for (let i = 0; i < count; i++) {
+                                tableData[r].splice(minCol, 0, '');
+                            }
+                        }
+                        notifyChange();
+                        renderTable();
+                        selectSingleCell(0, minCol);
+                    });
+                    break;
+                case 'insertColRight':
+                    showInsertDialog('Insert Columns Right', 'column', 10 - tableData[0].length, (count) => {
+                        for (let r = 0; r < tableData.length; r++) {
+                            for (let i = 0; i < count; i++) {
+                                tableData[r].splice(maxCol + 1 + i, 0, '');
+                            }
+                        }
+                        notifyChange();
+                        renderTable();
+                        selectSingleCell(0, maxCol + 1);
+                    });
+                    break;
+                case 'copyCols':
+                    copiedCols = [];
+                    for (let c = minCol; c <= maxCol; c++) {
+                        const colData = tableData.map(row => row[c] || '');
+                        copiedCols.push(colData);
+                    }
+                    copiedRows = null;
+                    updateStatus('Copied ' + copiedCols.length + ' column(s)');
+                    break;
+                case 'pasteCols':
+                    if (copiedCols && copiedCols.length > 0) {
+                        for (let i = 0; i < copiedCols.length; i++) {
+                            for (let r = 0; r < tableData.length; r++) {
+                                tableData[r].splice(maxCol + 1 + i, 0, copiedCols[i][r] || '');
+                            }
+                        }
+                        notifyChange();
+                        renderTable();
+                        selectSingleCell(0, maxCol + 1);
+                    }
+                    break;
+            }
+        }
+        
+        let dialogCallback = null;
+        
+        function showInsertDialog(title, type, maxCount, callback) {
+            if (maxCount <= 0) {
+                updateStatus('Cannot insert: maximum ' + (type === 'row' ? 'rows' : 'columns') + ' (10) reached');
+                return;
+            }
+            
+            const overlay = document.getElementById('dialog-overlay');
+            const titleEl = document.getElementById('dialog-title');
+            const selectEl = document.getElementById('dialog-select');
+            
+            titleEl.textContent = title;
+            
+            // Populate select options (1 to maxCount, max 10)
+            const limit = Math.min(maxCount, 10);
+            selectEl.innerHTML = '';
+            for (let i = 1; i <= limit; i++) {
+                selectEl.innerHTML += '<option value="' + i + '">' + i + '</option>';
+            }
+            
+            dialogCallback = callback;
+            overlay.classList.add('visible');
+        }
+        
+        document.getElementById('dialog-ok').addEventListener('click', () => {
+            const count = parseInt(document.getElementById('dialog-select').value);
+            document.getElementById('dialog-overlay').classList.remove('visible');
+            if (dialogCallback && count > 0) {
+                dialogCallback(count);
+            }
+            dialogCallback = null;
+        });
+        
+        document.getElementById('dialog-cancel').addEventListener('click', () => {
+            document.getElementById('dialog-overlay').classList.remove('visible');
+            dialogCallback = null;
+        });
+        
+        function notifyChange() {
+            vscode.postMessage({ type: 'updateTable', data: tableData });
+        }
     </script>
 </body>
 </html>`;
