@@ -21,9 +21,9 @@
 
 ## Phase 3: Webview Panel基盤
 
-- [ ] Webview Panel の作成
-- [ ] Extension ↔ Webview 間のメッセージ通信基盤
-- [ ] テーブルデータの受け渡し
+- [x] Webview Panel の作成
+- [x] Extension ↔ Webview 間のメッセージ通信基盤
+- [x] テーブルデータの受け渡し
 
 ---
 
