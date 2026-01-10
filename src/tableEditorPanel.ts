@@ -214,25 +214,21 @@ export class TableEditorPanel {
             padding: 10px;
             margin: 0;
         }
-        
         .table-container {
             overflow: auto;
             max-width: 100%;
             max-height: calc(100vh - 60px);
         }
-        
         table {
             border-collapse: collapse;
             user-select: none;
         }
-        
         th, td {
             border: 1px solid var(--vscode-panel-border);
             padding: 4px 8px;
             min-width: 60px;
             text-align: left;
         }
-        
         th {
             background-color: var(--vscode-editor-lineHighlightBackground);
             font-weight: normal;
@@ -240,7 +236,6 @@ export class TableEditorPanel {
             top: 0;
             z-index: 1;
         }
-        
         .row-header {
             background-color: var(--vscode-editor-lineHighlightBackground);
             text-align: center;
@@ -248,8 +243,17 @@ export class TableEditorPanel {
             position: sticky;
             left: 0;
             z-index: 1;
+            cursor: pointer;
         }
-        
+        .row-header:hover, .col-header:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+        .row-header.selected, .col-header.selected {
+            background-color: var(--vscode-editor-selectionBackground);
+        }
+        .col-header {
+            cursor: pointer;
+        }
         .corner-header {
             position: sticky;
             top: 0;
@@ -257,25 +261,22 @@ export class TableEditorPanel {
             z-index: 2;
             background-color: var(--vscode-editor-lineHighlightBackground);
         }
-        
         .cell {
             cursor: cell;
         }
-        
         .cell:hover {
             background-color: var(--vscode-list-hoverBackground);
         }
-        
         .cell.selected {
             background-color: var(--vscode-editor-selectionBackground);
+        }
+        .cell.active {
             outline: 2px solid var(--vscode-focusBorder);
             outline-offset: -2px;
         }
-        
         .cell.editing {
             padding: 0;
         }
-        
         .cell.editing input {
             width: 100%;
             height: 100%;
@@ -288,7 +289,6 @@ export class TableEditorPanel {
             outline: none;
             box-sizing: border-box;
         }
-        
         .status-bar {
             margin-top: 10px;
             padding: 5px;
@@ -311,18 +311,23 @@ export class TableEditorPanel {
         const vscode = acquireVsCodeApi();
         
         let tableData = [];
-        let selectedCell = null;
         let isEditing = false;
+        let isDragging = false;
         
-        // Listen for messages from extension
+        // Selection state
+        let selection = {
+            startRow: -1, startCol: -1,
+            endRow: -1, endCol: -1,
+            activeRow: -1, activeCol: -1,
+            type: 'cell' // 'cell', 'row', 'column'
+        };
+        
         window.addEventListener('message', event => {
             const message = event.data;
-            switch (message.type) {
-                case 'tableData':
-                    tableData = message.data;
-                    renderTable();
-                    updateStatus('Ready');
-                    break;
+            if (message.type === 'tableData') {
+                tableData = message.data;
+                renderTable();
+                updateStatus('Ready');
             }
         });
         
@@ -338,19 +343,17 @@ export class TableEditorPanel {
             
             const columnCount = Math.max(...tableData.map(row => row.length));
             
-            // Render column headers (A, B, C, ...)
             let headerHtml = '<tr><th class="corner-header"></th>';
             for (let col = 0; col < columnCount; col++) {
-                headerHtml += '<th>' + getColumnName(col) + '</th>';
+                headerHtml += '<th class="col-header" data-col="' + col + '">' + getColumnName(col) + '</th>';
             }
             headerHtml += '</tr>';
             headerRow.innerHTML = headerHtml;
             
-            // Render rows
             let bodyHtml = '';
             for (let row = 0; row < tableData.length; row++) {
                 bodyHtml += '<tr>';
-                bodyHtml += '<td class="row-header">' + (row + 1) + '</td>';
+                bodyHtml += '<td class="row-header" data-row="' + row + '">' + (row + 1) + '</td>';
                 for (let col = 0; col < columnCount; col++) {
                     const value = tableData[row][col] || '';
                     bodyHtml += '<td class="cell" data-row="' + row + '" data-col="' + col + '">' + escapeHtml(value) + '</td>';
@@ -359,12 +362,24 @@ export class TableEditorPanel {
             }
             tableBody.innerHTML = bodyHtml;
             
-            // Add click handlers
             document.querySelectorAll('.cell').forEach(cell => {
-                cell.addEventListener('click', handleCellClick);
+                cell.addEventListener('mousedown', handleCellMouseDown);
+                cell.addEventListener('mouseover', handleCellMouseOver);
                 cell.addEventListener('dblclick', handleCellDoubleClick);
             });
+            
+            document.querySelectorAll('.row-header').forEach(header => {
+                header.addEventListener('mousedown', handleRowHeaderMouseDown);
+                header.addEventListener('mouseover', handleRowHeaderMouseOver);
+            });
+            
+            document.querySelectorAll('.col-header').forEach(header => {
+                header.addEventListener('mousedown', handleColHeaderMouseDown);
+                header.addEventListener('mouseover', handleColHeaderMouseOver);
+            });
         }
+        
+        document.addEventListener('mouseup', () => { isDragging = false; });
         
         function getColumnName(index) {
             let name = '';
@@ -381,45 +396,209 @@ export class TableEditorPanel {
             return div.innerHTML;
         }
         
-        function handleCellClick(event) {
+        function handleCellMouseDown(event) {
             if (isEditing) return;
-            
-            const cell = event.target;
-            selectCell(cell);
-        }
-        
-        function handleCellDoubleClick(event) {
-            const cell = event.target;
-            startEditing(cell);
-        }
-        
-        function selectCell(cell) {
-            // Clear previous selection
-            document.querySelectorAll('.cell.selected').forEach(c => c.classList.remove('selected'));
-            
-            cell.classList.add('selected');
-            selectedCell = cell;
+            const cell = event.target.closest('.cell');
+            if (!cell) return;
             
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
-            updateStatus('Selected: ' + getColumnName(col) + (row + 1));
+            
+            isDragging = true;
+            selection = {
+                startRow: row, startCol: col,
+                endRow: row, endCol: col,
+                activeRow: row, activeCol: col,
+                type: 'cell'
+            };
+            updateSelectionDisplay();
+            event.preventDefault();
+        }
+        
+        function handleCellMouseOver(event) {
+            if (!isDragging || isEditing || selection.type !== 'cell') return;
+            const cell = event.target.closest('.cell');
+            if (!cell) return;
+            
+            selection.endRow = parseInt(cell.dataset.row);
+            selection.endCol = parseInt(cell.dataset.col);
+            updateSelectionDisplay();
+        }
+        
+        function handleRowHeaderMouseDown(event) {
+            if (isEditing) return;
+            const header = event.target.closest('.row-header');
+            if (!header) return;
+            
+            const row = parseInt(header.dataset.row);
+            const columnCount = tableData[0]?.length || 0;
+            
+            isDragging = true;
+            selection = {
+                startRow: row, startCol: 0,
+                endRow: row, endCol: columnCount - 1,
+                activeRow: row, activeCol: 0,
+                type: 'row'
+            };
+            updateSelectionDisplay();
+            event.preventDefault();
+        }
+        
+        function handleRowHeaderMouseOver(event) {
+            if (!isDragging || selection.type !== 'row') return;
+            const header = event.target.closest('.row-header');
+            if (!header) return;
+            
+            const row = parseInt(header.dataset.row);
+            selection.endRow = row;
+            updateSelectionDisplay();
+        }
+        
+        function handleColHeaderMouseDown(event) {
+            if (isEditing) return;
+            const header = event.target.closest('.col-header');
+            if (!header) return;
+            
+            const col = parseInt(header.dataset.col);
+            const rowCount = tableData.length;
+            
+            isDragging = true;
+            selection = {
+                startRow: 0, startCol: col,
+                endRow: rowCount - 1, endCol: col,
+                activeRow: 0, activeCol: col,
+                type: 'column'
+            };
+            updateSelectionDisplay();
+            event.preventDefault();
+        }
+        
+        function handleColHeaderMouseOver(event) {
+            if (!isDragging || selection.type !== 'column') return;
+            const header = event.target.closest('.col-header');
+            if (!header) return;
+            
+            const col = parseInt(header.dataset.col);
+            selection.endCol = col;
+            updateSelectionDisplay();
+        }
+        
+        function handleCellDoubleClick(event) {
+            const cell = event.target.closest('.cell');
+            if (cell) startEditing(cell);
+        }
+        
+        function updateSelectionDisplay() {
+            document.querySelectorAll('.cell.selected, .cell.active').forEach(c => {
+                c.classList.remove('selected', 'active');
+            });
+            document.querySelectorAll('.row-header.selected, .col-header.selected').forEach(h => {
+                h.classList.remove('selected');
+            });
+            
+            const minRow = Math.min(selection.startRow, selection.endRow);
+            const maxRow = Math.max(selection.startRow, selection.endRow);
+            const minCol = Math.min(selection.startCol, selection.endCol);
+            const maxCol = Math.max(selection.startCol, selection.endCol);
+            
+            for (let row = minRow; row <= maxRow; row++) {
+                for (let col = minCol; col <= maxCol; col++) {
+                    const cell = document.querySelector('.cell[data-row="' + row + '"][data-col="' + col + '"]');
+                    if (cell) cell.classList.add('selected');
+                }
+            }
+            
+            const activeCell = document.querySelector('.cell[data-row="' + selection.activeRow + '"][data-col="' + selection.activeCol + '"]');
+            if (activeCell) activeCell.classList.add('active');
+            
+            if (selection.type === 'row') {
+                for (let row = minRow; row <= maxRow; row++) {
+                    const header = document.querySelector('.row-header[data-row="' + row + '"]');
+                    if (header) header.classList.add('selected');
+                }
+            } else if (selection.type === 'column') {
+                for (let col = minCol; col <= maxCol; col++) {
+                    const header = document.querySelector('.col-header[data-col="' + col + '"]');
+                    if (header) header.classList.add('selected');
+                }
+            }
+            
+            updateStatusFromSelection();
+        }
+        
+        function updateStatusFromSelection() {
+            const minRow = Math.min(selection.startRow, selection.endRow);
+            const maxRow = Math.max(selection.startRow, selection.endRow);
+            const minCol = Math.min(selection.startCol, selection.endCol);
+            const maxCol = Math.max(selection.startCol, selection.endCol);
+            
+            if (minRow === maxRow && minCol === maxCol) {
+                updateStatus('Selected: ' + getColumnName(minCol) + (minRow + 1));
+            } else {
+                updateStatus('Selected: ' + getColumnName(minCol) + (minRow + 1) + ':' + getColumnName(maxCol) + (maxRow + 1));
+            }
+        }
+        
+        function getActiveCell() {
+            return document.querySelector('.cell[data-row="' + selection.activeRow + '"][data-col="' + selection.activeCol + '"]');
+        }
+        
+        function selectSingleCell(row, col) {
+            selection = {
+                startRow: row, startCol: col,
+                endRow: row, endCol: col,
+                activeRow: row, activeCol: col,
+                type: 'cell'
+            };
+            updateSelectionDisplay();
         }
         
         function startEditing(cell) {
             if (isEditing) return;
             
             isEditing = true;
-            selectedCell = cell;
             cell.classList.add('editing');
             
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
             const value = tableData[row][col] || '';
             
-            cell.innerHTML = '<input type="text" value="' + escapeHtml(value) + '">';
+            selectSingleCell(row, col);
+            
+            cell.innerHTML = '<input type="text" value="' + escapeHtml(value).replace(/"/g, '&quot;') + '">';
             const input = cell.querySelector('input');
             input.focus();
             input.select();
+            
+            input.addEventListener('blur', () => finishEditing(cell, input.value));
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.altKey) {
+                    e.preventDefault();
+                    finishEditing(cell, input.value);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEditing(cell);
+                }
+            });
+            
+            updateStatus('Editing: ' + getColumnName(col) + (row + 1));
+        }
+        
+        function startEditingWithValue(cell, initialValue) {
+            if (isEditing) return;
+            
+            isEditing = true;
+            cell.classList.add('editing');
+            
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            
+            selectSingleCell(row, col);
+            
+            cell.innerHTML = '<input type="text" value="' + escapeHtml(initialValue).replace(/"/g, '&quot;') + '">';
+            const input = cell.querySelector('input');
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
             
             input.addEventListener('blur', () => finishEditing(cell, input.value));
             input.addEventListener('keydown', (e) => {
@@ -441,20 +620,13 @@ export class TableEditorPanel {
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
             
-            // Update data
             tableData[row][col] = newValue;
             
-            // Update display
             cell.classList.remove('editing');
             cell.innerHTML = escapeHtml(newValue);
             isEditing = false;
             
-            // Notify extension of change
-            vscode.postMessage({
-                type: 'updateTable',
-                data: tableData
-            });
-            
+            vscode.postMessage({ type: 'updateTable', data: tableData });
             updateStatus('Modified');
         }
         
@@ -476,14 +648,12 @@ export class TableEditorPanel {
             document.getElementById('status-bar').textContent = message;
         }
         
-        // Keyboard navigation
         document.addEventListener('keydown', (e) => {
             if (isEditing) return;
-            if (!selectedCell) return;
+            if (selection.activeRow < 0 || selection.activeCol < 0) return;
             
-            const row = parseInt(selectedCell.dataset.row);
-            const col = parseInt(selectedCell.dataset.col);
-            
+            const row = selection.activeRow;
+            const col = selection.activeCol;
             let newRow = row;
             let newCol = col;
             
@@ -525,21 +695,22 @@ export class TableEditorPanel {
                     e.preventDefault();
                     break;
                 case 'F2':
-                    startEditing(selectedCell);
+                    const activeCell = getActiveCell();
+                    if (activeCell) startEditing(activeCell);
                     e.preventDefault();
                     return;
                 default:
-                    // Start editing on any printable key
                     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-                        startEditing(selectedCell);
+                        const activeCell = getActiveCell();
+                        if (activeCell) {
+                            startEditingWithValue(activeCell, e.key);
+                            e.preventDefault();
+                        }
                     }
                     return;
             }
             
-            const newCell = document.querySelector('.cell[data-row="' + newRow + '"][data-col="' + newCol + '"]');
-            if (newCell) {
-                selectCell(newCell);
-            }
+            selectSingleCell(newRow, newCol);
         });
     </script>
 </body>
