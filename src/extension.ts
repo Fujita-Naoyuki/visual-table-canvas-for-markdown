@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { TableCodeLensProvider } from './codeLensProvider';
 import { TableInfo } from './tableParser';
+import { TableEditorPanel } from './tableEditorPanel';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Visual Table Canvas for Markdown is now active!');
@@ -17,11 +18,13 @@ export function activate(context: vscode.ExtensionContext) {
         'visualTableCanvas.editTable',
         (uri?: vscode.Uri, table?: TableInfo, tableIndex?: number) => {
             if (uri && table) {
-                vscode.window.showInformationMessage(
-                    `Opening table editor for table ${(tableIndex ?? 0) + 1} ` +
-                    `(${table.data.length} rows, ${table.data[0]?.length ?? 0} columns)`
+                // Open Webview Panel
+                TableEditorPanel.createOrShow(
+                    context.extensionUri,
+                    uri,
+                    table,
+                    tableIndex ?? 0
                 );
-                // TODO: Phase 3 - Open Webview Panel
             } else {
                 vscode.window.showInformationMessage('Edit Table: No table selected');
             }
