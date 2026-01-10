@@ -2,9 +2,9 @@
 
 ## Phase 1: プロジェクトセットアップ
 
-- [ ] VSCode拡張機能プロジェクトの初期化（yo code）
-- [ ] 開発環境のセットアップ（TypeScript, webpack等）
-- [ ] package.jsonの設定（activationEvents, contributes等）
+- [x] VSCode拡張機能プロジェクトの初期化（yo code）
+- [x] 開発環境のセットアップ（TypeScript, webpack等）
+- [x] package.jsonの設定（activationEvents, contributes等）
 
 ---
 
