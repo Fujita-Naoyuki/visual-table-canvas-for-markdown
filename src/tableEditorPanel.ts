@@ -15,6 +15,10 @@ export interface UpdateTable {
     data: string[][];
 }
 
+export interface WebviewReady {
+    type: 'ready';
+}
+
 export interface RequestSave {
     type: 'requestSave';
 }
@@ -29,7 +33,7 @@ export interface SaveCancelled {
 }
 
 export type ExtensionToWebviewMessage = TableData;
-export type WebviewToExtensionMessage = UpdateTable | SaveConfirmed | SaveCancelled;
+export type WebviewToExtensionMessage = UpdateTable | SaveConfirmed | SaveCancelled | WebviewReady;
 
 /**
  * Manages the Webview Panel for table editing
@@ -122,6 +126,9 @@ export class TableEditorPanel {
 
     private async _handleMessage(message: WebviewToExtensionMessage) {
         switch (message.type) {
+            case 'ready':
+                this._sendTableData();
+                break;
             case 'updateTable':
                 this._currentData = message.data;
                 this._isDirty = true;
@@ -184,15 +191,14 @@ export class TableEditorPanel {
 
     private _update() {
         this._panel.webview.html = this._getHtmlForWebview();
+    }
 
-        // Send table data to webview
-        setTimeout(() => {
-            this._panel.webview.postMessage({
-                type: 'tableData',
-                data: this._tableInfo.data,
-                tableIndex: this._tableIndex
-            } as TableData);
-        }, 100);
+    private _sendTableData() {
+        this._panel.webview.postMessage({
+            type: 'tableData',
+            data: this._tableInfo.data,
+            tableIndex: this._tableIndex
+        } as TableData);
     }
 
     private _getHtmlForWebview(): string {
@@ -277,9 +283,9 @@ export class TableEditorPanel {
         .cell.editing {
             padding: 0;
         }
-        .cell.editing input {
+        .cell.editing input, .cell.editing textarea {
             width: 100%;
-            height: 100%;
+            min-height: 24px;
             border: none;
             padding: 4px 8px;
             font-family: inherit;
@@ -288,6 +294,8 @@ export class TableEditorPanel {
             color: var(--vscode-input-foreground);
             outline: none;
             box-sizing: border-box;
+            resize: none;
+            overflow: hidden;
         }
         .status-bar {
             margin-top: 10px;
@@ -322,12 +330,21 @@ export class TableEditorPanel {
             type: 'cell' // 'cell', 'row', 'column'
         };
         
+        // Notify extension that webview is ready
+        vscode.postMessage({ type: 'ready' });
+        
         window.addEventListener('message', event => {
             const message = event.data;
-            if (message.type === 'tableData') {
-                tableData = message.data;
-                renderTable();
-                updateStatus('Ready');
+            console.log('Received message:', message);
+            try {
+                if (message.type === 'tableData') {
+                    tableData = message.data;
+                    renderTable();
+                    updateStatus('Ready');
+                }
+            } catch (e) {
+                console.error('Error handling message:', e);
+                updateStatus('Error: ' + e.message);
             }
         });
         
@@ -565,23 +582,44 @@ export class TableEditorPanel {
             
             selectSingleCell(row, col);
             
-            cell.innerHTML = '<input type="text" value="' + escapeHtml(value).replace(/"/g, '&quot;') + '">';
-            const input = cell.querySelector('input');
-            input.focus();
-            input.select();
+            cell.innerHTML = '<textarea rows="1">' + escapeHtml(value) + '</textarea>';
+            const textarea = cell.querySelector('textarea');
+            textarea.focus();
+            textarea.select();
+            autoResizeTextarea(textarea);
             
-            input.addEventListener('blur', () => finishEditing(cell, input.value));
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.altKey) {
+            let isCancelled = false;
+            
+            textarea.addEventListener('blur', () => {
+                if (!isCancelled) {
+                    finishEditing(cell, textarea.value);
+                }
+            });
+            textarea.addEventListener('input', () => autoResizeTextarea(textarea));
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.altKey) {
+                    // Alt+Enter: insert <br>
                     e.preventDefault();
-                    finishEditing(cell, input.value);
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    textarea.value = textarea.value.substring(0, start) + '<br>' + textarea.value.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + 4;
+                } else if (e.key === 'Enter' && !e.altKey) {
+                    e.preventDefault();
+                    finishEditing(cell, textarea.value);
                 } else if (e.key === 'Escape') {
                     e.preventDefault();
+                    isCancelled = true;
                     cancelEditing(cell);
                 }
             });
             
-            updateStatus('Editing: ' + getColumnName(col) + (row + 1));
+            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' (Alt+Enter for <br>)');
+        }
+        
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
         }
         
         function startEditingWithValue(cell, initialValue) {
@@ -595,27 +633,44 @@ export class TableEditorPanel {
             
             selectSingleCell(row, col);
             
-            cell.innerHTML = '<input type="text" value="' + escapeHtml(initialValue).replace(/"/g, '&quot;') + '">';
-            const input = cell.querySelector('input');
-            input.focus();
-            input.setSelectionRange(input.value.length, input.value.length);
+            cell.innerHTML = '<textarea rows="1">' + escapeHtml(initialValue) + '</textarea>';
+            const textarea = cell.querySelector('textarea');
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            autoResizeTextarea(textarea);
             
-            input.addEventListener('blur', () => finishEditing(cell, input.value));
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.altKey) {
+            let isCancelled = false;
+            
+            textarea.addEventListener('blur', () => {
+                if (!isCancelled) {
+                    finishEditing(cell, textarea.value);
+                }
+            });
+            textarea.addEventListener('input', () => autoResizeTextarea(textarea));
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.altKey) {
+                    // Alt+Enter: insert <br>
                     e.preventDefault();
-                    finishEditing(cell, input.value);
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    textarea.value = textarea.value.substring(0, start) + '<br>' + textarea.value.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + 4;
+                } else if (e.key === 'Enter' && !e.altKey) {
+                    e.preventDefault();
+                    finishEditing(cell, textarea.value);
                 } else if (e.key === 'Escape') {
                     e.preventDefault();
+                    isCancelled = true;
                     cancelEditing(cell);
                 }
             });
             
-            updateStatus('Editing: ' + getColumnName(col) + (row + 1));
+            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' (Alt+Enter for <br>)');
         }
         
         function finishEditing(cell, newValue) {
             if (!isEditing) return;
+            if (!cell.classList.contains('editing')) return;
             
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
@@ -632,6 +687,7 @@ export class TableEditorPanel {
         
         function cancelEditing(cell) {
             if (!isEditing) return;
+            if (!cell.classList.contains('editing')) return;
             
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
