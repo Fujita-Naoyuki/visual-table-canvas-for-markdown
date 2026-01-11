@@ -898,7 +898,7 @@ export class TableEditorPanel {
             cell.innerHTML = renderMarkdown(newValue);
             isEditing = false;
             
-            vscode.postMessage({ type: 'updateTable', data: tableData });
+            notifyChange();
             updateStatus('Modified');
         }
         
