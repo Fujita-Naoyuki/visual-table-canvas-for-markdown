@@ -1481,7 +1481,7 @@ export class TableEditorPanel {
                     }
                     break;
                 case 'insertRowAbove':
-                    showInsertDialog('Insert Rows Above', 'row', 10 - tableData.length, (count) => {
+                    showInsertDialog('Insert Rows Above', 'row', 10, (count) => {
                         saveUndoState();
                         for (let i = 0; i < count; i++) {
                             const newRow = new Array(tableData[0].length).fill('');
@@ -1493,7 +1493,7 @@ export class TableEditorPanel {
                     });
                     break;
                 case 'insertRowBelow':
-                    showInsertDialog('Insert Rows Below', 'row', 10 - tableData.length, (count) => {
+                    showInsertDialog('Insert Rows Below', 'row', 10, (count) => {
                         saveUndoState();
                         for (let i = 0; i < count; i++) {
                             const newRow = new Array(tableData[0].length).fill('');
@@ -1527,7 +1527,7 @@ export class TableEditorPanel {
                     }
                     break;
                 case 'insertColLeft':
-                    showInsertDialog('Insert Columns Left', 'column', 10 - tableData[0].length, (count) => {
+                    showInsertDialog('Insert Columns Left', 'column', 10, (count) => {
                         saveUndoState();
                         for (let r = 0; r < tableData.length; r++) {
                             for (let i = 0; i < count; i++) {
@@ -1540,7 +1540,7 @@ export class TableEditorPanel {
                     });
                     break;
                 case 'insertColRight':
-                    showInsertDialog('Insert Columns Right', 'column', 10 - tableData[0].length, (count) => {
+                    showInsertDialog('Insert Columns Right', 'column', 10, (count) => {
                         saveUndoState();
                         for (let r = 0; r < tableData.length; r++) {
                             for (let i = 0; i < count; i++) {
@@ -1571,21 +1571,15 @@ export class TableEditorPanel {
         let dialogCallback = null;
         
         function showInsertDialog(title, type, maxCount, callback) {
-            if (maxCount <= 0) {
-                updateStatus('Cannot insert: maximum ' + (type === 'row' ? 'rows' : 'columns') + ' (10) reached');
-                return;
-            }
-            
             const overlay = document.getElementById('dialog-overlay');
             const titleEl = document.getElementById('dialog-title');
             const selectEl = document.getElementById('dialog-select');
             
             titleEl.textContent = title;
             
-            // Populate select options (1 to maxCount, max 10)
-            const limit = Math.min(maxCount, 10);
+            // Populate select options (1 to 10)
             selectEl.innerHTML = '';
-            for (let i = 1; i <= limit; i++) {
+            for (let i = 1; i <= 10; i++) {
                 selectEl.innerHTML += '<option value="' + i + '">' + i + '</option>';
             }
             
