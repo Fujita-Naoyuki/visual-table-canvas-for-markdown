@@ -424,6 +424,30 @@ export class TableEditorPanel {
             type: 'cell' // 'cell', 'row', 'column'
         };
         
+        // Undo stack
+        const undoStack = [];
+        const MAX_UNDO_STACK = 50;
+        
+        function saveUndoState() {
+            // Deep copy of tableData
+            const snapshot = tableData.map(row => [...row]);
+            undoStack.push(snapshot);
+            if (undoStack.length > MAX_UNDO_STACK) {
+                undoStack.shift();
+            }
+        }
+        
+        function undo() {
+            if (undoStack.length === 0) {
+                updateStatus('Nothing to undo');
+                return;
+            }
+            tableData = undoStack.pop();
+            notifyChange();
+            renderTable();
+            updateStatus('Undo');
+        }
+        
         // Notify extension that webview is ready
         vscode.postMessage({ type: 'ready' });
         
@@ -781,6 +805,7 @@ export class TableEditorPanel {
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
             
+            saveUndoState();
             tableData[row][col] = newValue;
             
             cell.classList.remove('editing');
@@ -883,6 +908,13 @@ export class TableEditorPanel {
         document.addEventListener('keydown', (e) => {
             if (isEditing) return;
             
+            // Ctrl+Z: Undo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                undo();
+                e.preventDefault();
+                return;
+            }
+            
             // Ctrl+C: Copy selected cells or rows/columns
             if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
                 const minRow = Math.min(selection.startRow, selection.endRow);
@@ -950,6 +982,7 @@ export class TableEditorPanel {
                     
                     // Single row copied -> apply to all selected rows
                     if (copyRowCount === 1) {
+                        saveUndoState();
                         for (let r = minRow; r <= maxRow; r++) {
                             for (let c = 0; c < copiedRows[0].length && c < tableData[r].length; c++) {
                                 tableData[r][c] = copiedRows[0][c];
@@ -961,6 +994,7 @@ export class TableEditorPanel {
                     }
                     // Single row selected + multiple rows copied -> paste from start point
                     else if (selRowCount === 1) {
+                        saveUndoState();
                         for (let i = 0; i < copyRowCount && (minRow + i) < tableData.length; i++) {
                             for (let c = 0; c < copiedRows[i].length && c < tableData[minRow + i].length; c++) {
                                 tableData[minRow + i][c] = copiedRows[i][c];
@@ -972,6 +1006,7 @@ export class TableEditorPanel {
                     }
                     // Same size -> paste directly
                     else if (selRowCount === copyRowCount) {
+                        saveUndoState();
                         for (let i = 0; i < copyRowCount; i++) {
                             for (let c = 0; c < copiedRows[i].length && c < tableData[minRow + i].length; c++) {
                                 tableData[minRow + i][c] = copiedRows[i][c];
@@ -996,6 +1031,7 @@ export class TableEditorPanel {
                     
                     // Single column copied -> apply to all selected columns
                     if (copyColCount === 1) {
+                        saveUndoState();
                         for (let c = minCol; c <= maxCol; c++) {
                             for (let r = 0; r < copiedCols[0].length && r < tableData.length; r++) {
                                 tableData[r][c] = copiedCols[0][r];
@@ -1007,6 +1043,7 @@ export class TableEditorPanel {
                     }
                     // Single column selected + multiple columns copied -> paste from start point
                     else if (selColCount === 1) {
+                        saveUndoState();
                         for (let i = 0; i < copyColCount && (minCol + i) < tableData[0].length; i++) {
                             for (let r = 0; r < copiedCols[i].length && r < tableData.length; r++) {
                                 tableData[r][minCol + i] = copiedCols[i][r];
@@ -1018,6 +1055,7 @@ export class TableEditorPanel {
                     }
                     // Same size -> paste directly
                     else if (selColCount === copyColCount) {
+                        saveUndoState();
                         for (let i = 0; i < copyColCount; i++) {
                             for (let r = 0; r < copiedCols[i].length && r < tableData.length; r++) {
                                 tableData[r][minCol + i] = copiedCols[i][r];
@@ -1054,6 +1092,7 @@ export class TableEditorPanel {
                 
                 // Single cell copied -> apply to all selected cells
                 if (copiedCellsRows === 1 && copiedCellsCols === 1) {
+                    saveUndoState();
                     const value = copiedCells[0][0];
                     for (let r = minRow; r <= maxRow; r++) {
                         for (let c = minCol; c <= maxCol; c++) {
@@ -1066,6 +1105,7 @@ export class TableEditorPanel {
                 }
                 // Single cell selected + multiple cells copied -> paste from start point
                 else if (selRows === 1 && selCols === 1) {
+                    saveUndoState();
                     for (let r = 0; r < copiedCellsRows; r++) {
                         for (let c = 0; c < copiedCellsCols; c++) {
                             const targetRow = minRow + r;
@@ -1081,6 +1121,7 @@ export class TableEditorPanel {
                 }
                 // Same size selection and copied -> paste directly
                 else if (selRows === copiedCellsRows && selCols === copiedCellsCols) {
+                    saveUndoState();
                     for (let r = 0; r < copiedCellsRows; r++) {
                         for (let c = 0; c < copiedCellsCols; c++) {
                             tableData[minRow + r][minCol + c] = copiedCells[r][c];
@@ -1229,6 +1270,7 @@ export class TableEditorPanel {
             switch (action) {
                 case 'deleteRows':
                     if (tableData.length > 1) {
+                        saveUndoState();
                         tableData.splice(minRow, maxRow - minRow + 1);
                         notifyChange();
                         renderTable();
@@ -1237,6 +1279,7 @@ export class TableEditorPanel {
                     break;
                 case 'insertRowAbove':
                     showInsertDialog('Insert Rows Above', 'row', 10 - tableData.length, (count) => {
+                        saveUndoState();
                         for (let i = 0; i < count; i++) {
                             const newRow = new Array(tableData[0].length).fill('');
                             tableData.splice(minRow, 0, newRow);
@@ -1248,6 +1291,7 @@ export class TableEditorPanel {
                     break;
                 case 'insertRowBelow':
                     showInsertDialog('Insert Rows Below', 'row', 10 - tableData.length, (count) => {
+                        saveUndoState();
                         for (let i = 0; i < count; i++) {
                             const newRow = new Array(tableData[0].length).fill('');
                             tableData.splice(maxRow + 1 + i, 0, newRow);
@@ -1259,6 +1303,7 @@ export class TableEditorPanel {
                     break;
                 case 'pasteRows':
                     if (copiedRows && copiedRows.length > 0) {
+                        saveUndoState();
                         for (let i = 0; i < copiedRows.length; i++) {
                             tableData.splice(maxRow + 1 + i, 0, [...copiedRows[i]]);
                         }
@@ -1269,6 +1314,7 @@ export class TableEditorPanel {
                     break;
                 case 'deleteCols':
                     if (tableData[0].length > 1) {
+                        saveUndoState();
                         for (let r = 0; r < tableData.length; r++) {
                             tableData[r].splice(minCol, maxCol - minCol + 1);
                         }
@@ -1279,6 +1325,7 @@ export class TableEditorPanel {
                     break;
                 case 'insertColLeft':
                     showInsertDialog('Insert Columns Left', 'column', 10 - tableData[0].length, (count) => {
+                        saveUndoState();
                         for (let r = 0; r < tableData.length; r++) {
                             for (let i = 0; i < count; i++) {
                                 tableData[r].splice(minCol, 0, '');
@@ -1291,6 +1338,7 @@ export class TableEditorPanel {
                     break;
                 case 'insertColRight':
                     showInsertDialog('Insert Columns Right', 'column', 10 - tableData[0].length, (count) => {
+                        saveUndoState();
                         for (let r = 0; r < tableData.length; r++) {
                             for (let i = 0; i < count; i++) {
                                 tableData[r].splice(maxCol + 1 + i, 0, '');
@@ -1303,6 +1351,7 @@ export class TableEditorPanel {
                     break;
                 case 'pasteCols':
                     if (copiedCols && copiedCols.length > 0) {
+                        saveUndoState();
                         for (let i = 0; i < copiedCols.length; i++) {
                             for (let r = 0; r < tableData.length; r++) {
                                 tableData[r].splice(maxCol + 1 + i, 0, copiedCols[i][r] || '');
