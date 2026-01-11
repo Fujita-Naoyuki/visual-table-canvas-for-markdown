@@ -23,18 +23,67 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 
 ## Keyboard Shortcuts
 
+### Selection Mode
+
 | Key | Action |
 |-----|--------|
 | Arrow Keys | Navigate cells |
 | Tab | Move to next cell |
 | Shift+Tab | Move to previous cell |
-| Enter | Confirm edit / Move down |
-| Escape | Cancel edit |
+| Enter | Move to cell below |
 | Delete / Backspace | Clear selected cells |
 | Ctrl+Z | Undo |
 | Ctrl+C | Copy |
 | Ctrl+V | Paste |
-| F2 | Start editing cell |
+| F2 / Double-click | Start editing cell |
+
+### Edit Mode
+
+| Key | Action |
+|-----|--------|
+| Enter / Tab | Confirm edit |
+| Alt+Enter | Insert line break (`<br>`) |
+| Escape | Cancel edit |
+
+## Copy & Paste Behavior
+
+### Cell Paste (Ctrl+V)
+
+| Scenario | Behavior |
+|----------|----------|
+| Multiple cells selected + Single cell copied | Apply to all selected cells |
+| Single cell selected + Multiple cells copied | Paste from starting point (overwrite) |
+| Multiple cells selected + Same size copied | Paste as is |
+| Multiple cells selected + Different size copied | Show error |
+
+### Row/Column Paste (Ctrl+V)
+
+| Scenario | Behavior |
+|----------|----------|
+| Multiple rows/columns selected + Single row/column copied | Apply to all selected |
+| Single row/column selected + Multiple rows/columns copied | Paste from starting point (overwrite) |
+| Multiple rows/columns selected + Same size copied | Paste as is |
+| Multiple rows/columns selected + Different size copied | Show error |
+
+## Context Menu (Right-click)
+
+### Row Header
+
+| Menu Item | Action |
+|-----------|--------|
+| Delete Row | Delete selected row(s) |
+| Insert Row Above | Insert row(s) above (1-10) |
+| Insert Row Below | Insert row(s) below (1-10) |
+| Insert Copied Row(s) | Insert copied row(s) at current position |
+
+### Column Header
+
+| Menu Item | Action |
+|-----------|--------|
+| Delete Column | Delete selected column(s) |
+| Insert Column Left | Insert column(s) to the left (1-10) |
+| Insert Column Right | Insert column(s) to the right (1-10) |
+| Insert Copied Column(s) | Insert copied column(s) at current position |
 
 ## Configuration
 
