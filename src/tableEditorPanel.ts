@@ -32,8 +32,13 @@ export interface SaveCancelled {
     type: 'saveCancelled';
 }
 
+export interface SaveAndClose {
+    type: 'saveAndClose';
+    data: string[][];
+}
+
 export type ExtensionToWebviewMessage = TableData;
-export type WebviewToExtensionMessage = UpdateTable | SaveConfirmed | SaveCancelled | WebviewReady;
+export type WebviewToExtensionMessage = UpdateTable | SaveConfirmed | SaveCancelled | SaveAndClose | WebviewReady;
 
 /**
  * Manages the Webview Panel for table editing
@@ -138,6 +143,11 @@ export class TableEditorPanel {
                 break;
             case 'saveCancelled':
                 // User cancelled save, just close
+                break;
+            case 'saveAndClose':
+                await this._saveToDocument(message.data);
+                this._isDirty = false; // Prevent confirmation dialog
+                this._panel.dispose();
                 break;
         }
     }
@@ -299,10 +309,32 @@ export class TableEditorPanel {
         }
         .status-bar {
             margin-top: 10px;
-            padding: 5px;
+            padding: 5px 10px;
             background-color: var(--vscode-statusBar-background);
             color: var(--vscode-statusBar-foreground);
             font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-text {
+            flex: 1;
+        }
+        .save-btn {
+            padding: 4px 12px;
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .save-btn:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+        .save-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .context-menu {
             display: none;
@@ -394,7 +426,10 @@ export class TableEditorPanel {
             <tbody id="table-body"></tbody>
         </table>
     </div>
-    <div class="status-bar" id="status-bar">Loading...</div>
+    <div class="status-bar">
+        <span class="status-text" id="status-bar">Loading...</span>
+        <button class="save-btn" id="save-btn" disabled>Save & Close</button>
+    </div>
     <div class="context-menu" id="context-menu"></div>
     <div class="dialog-overlay" id="dialog-overlay">
         <div class="dialog">
@@ -1427,7 +1462,13 @@ export class TableEditorPanel {
         
         function notifyChange() {
             vscode.postMessage({ type: 'updateTable', data: tableData });
+            document.getElementById('save-btn').disabled = false;
         }
+        
+        // Save button handler
+        document.getElementById('save-btn').addEventListener('click', () => {
+            vscode.postMessage({ type: 'saveAndClose', data: tableData });
+        });
     </script>
 </body>
 </html>`;
