@@ -1056,9 +1056,17 @@ export class TableEditorPanel {
                         renderTable();
                         updateStatus('Pasted to ' + selRowCount + ' row(s)');
                     }
-                    // Single row selected + multiple rows copied -> paste from start point
+                    // Single row selected + multiple rows copied -> paste from start point (auto-expand)
                     else if (selRowCount === 1) {
                         saveUndoState();
+                        
+                        // Auto-expand rows if needed
+                        const requiredRows = minRow + copyRowCount;
+                        while (tableData.length < requiredRows) {
+                            const newRow = new Array(tableData[0].length).fill('');
+                            tableData.push(newRow);
+                        }
+                        
                         for (let i = 0; i < copyRowCount && (minRow + i) < tableData.length; i++) {
                             for (let c = 0; c < copiedRows[i].length && c < tableData[minRow + i].length; c++) {
                                 tableData[minRow + i][c] = copiedRows[i][c];
@@ -1105,9 +1113,22 @@ export class TableEditorPanel {
                         renderTable();
                         updateStatus('Pasted to ' + selColCount + ' column(s)');
                     }
-                    // Single column selected + multiple columns copied -> paste from start point
+                    // Single column selected + multiple columns copied -> paste from start point (auto-expand)
                     else if (selColCount === 1) {
                         saveUndoState();
+                        
+                        // Auto-expand columns if needed
+                        const requiredCols = minCol + copyColCount;
+                        const currentCols = tableData[0].length;
+                        if (currentCols < requiredCols) {
+                            const colsToAdd = requiredCols - currentCols;
+                            for (let row of tableData) {
+                                for (let i = 0; i < colsToAdd; i++) {
+                                    row.push('');
+                                }
+                            }
+                        }
+                        
                         for (let i = 0; i < copyColCount && (minCol + i) < tableData[0].length; i++) {
                             for (let r = 0; r < copiedCols[i].length && r < tableData.length; r++) {
                                 tableData[r][minCol + i] = copiedCols[i][r];
@@ -1167,9 +1188,32 @@ export class TableEditorPanel {
                     renderTable();
                     updateStatus('Pasted to ' + selRows + 'x' + selCols + ' cells');
                 }
-                // Single cell selected + multiple cells copied -> paste from start point
+                // Single cell selected + multiple cells copied -> paste from start point (auto-expand)
                 else if (selRows === 1 && selCols === 1) {
                     saveUndoState();
+                    
+                    // Calculate required size
+                    const requiredRows = minRow + copiedCellsRows;
+                    const requiredCols = minCol + copiedCellsCols;
+                    
+                    // Auto-expand rows if needed
+                    while (tableData.length < requiredRows) {
+                        const newRow = new Array(tableData[0].length).fill('');
+                        tableData.push(newRow);
+                    }
+                    
+                    // Auto-expand columns if needed
+                    const currentCols = tableData[0].length;
+                    if (currentCols < requiredCols) {
+                        const colsToAdd = requiredCols - currentCols;
+                        for (let row of tableData) {
+                            for (let i = 0; i < colsToAdd; i++) {
+                                row.push('');
+                            }
+                        }
+                    }
+                    
+                    // Now paste the data
                     for (let r = 0; r < copiedCellsRows; r++) {
                         for (let c = 0; c < copiedCellsCols; c++) {
                             const targetRow = minRow + r;
