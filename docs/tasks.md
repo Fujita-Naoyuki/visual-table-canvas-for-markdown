@@ -132,6 +132,6 @@
 
 ## Phase 13: ドキュメント・リリース
 
-- [ ] README.mdの作成
-- [ ] CHANGELOG.mdの作成
-- [ ] VSCode Marketplaceへの公開準備
+- [x] README.mdの作成
+- [x] CHANGELOG.mdの作成
+- [x] VSCode Marketplaceへの公開準備
