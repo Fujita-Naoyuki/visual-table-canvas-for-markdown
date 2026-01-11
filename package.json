@@ -20,7 +20,17 @@
         "command": "visualTableCanvas.editTable",
         "title": "Edit Table"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Visual Table Canvas",
+      "properties": {
+        "visualTableCanvas.openBeside": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open Table Editor in a split view beside the current editor. If false, opens in the active tab."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
