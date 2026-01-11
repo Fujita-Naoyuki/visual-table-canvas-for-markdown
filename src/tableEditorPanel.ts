@@ -324,18 +324,54 @@ export class TableEditorPanel {
         .cell del {
             color: var(--vscode-disabledForeground);
         }
+        .toolbar {
+            padding: 8px 10px;
+            background-color: var(--vscode-editor-background);
+            border-bottom: 1px solid var(--vscode-widget-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .toolbar-right {
+            display: flex;
+            align-items: center;
+        }
+        .toolbar-btn {
+            padding: 4px 12px;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .toolbar-btn:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+        .toolbar-input {
+            width: 60px;
+            padding: 3px 6px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .toolbar-label {
+            font-size: 12px;
+            color: var(--vscode-foreground);
+        }
         .status-bar {
-            margin-top: 10px;
             padding: 5px 10px;
             background-color: var(--vscode-statusBar-background);
             color: var(--vscode-statusBar-foreground);
             font-size: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .status-text {
-            flex: 1;
         }
         .save-btn {
             padding: 4px 12px;
@@ -445,16 +481,24 @@ export class TableEditorPanel {
     </style>
 </head>
 <body>
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <button class="toolbar-btn" id="auto-width-btn">Auto Width</button>
+            <span class="toolbar-label">Max:</span>
+            <input type="number" class="toolbar-input" id="max-width-input" value="300" min="50" max="1000">
+            <span class="toolbar-label">px</span>
+        </div>
+        <div class="toolbar-right">
+            <button class="save-btn" id="save-btn" disabled>Save & Close</button>
+        </div>
+    </div>
     <div class="table-container" id="table-container" tabindex="0" style="outline: none;">
         <table id="table-grid">
             <thead id="table-header"></thead>
             <tbody id="table-body"></tbody>
         </table>
     </div>
-    <div class="status-bar">
-        <span class="status-text" id="status-bar">Loading...</span>
-        <button class="save-btn" id="save-btn" disabled>Save & Close</button>
-    </div>
+    <div class="status-bar" id="status-bar">Loading...</div>
     <div class="context-menu" id="context-menu"></div>
     <div class="dialog-overlay" id="dialog-overlay">
         <div class="dialog">
@@ -582,6 +626,9 @@ export class TableEditorPanel {
             if (selection.activeRow < 0 && tableData.length > 0) {
                 selectSingleCell(0, 0);
             }
+            
+            // Auto-fit column widths on initial render
+            autoFitColumnWidths();
         }
         
         document.addEventListener('mouseup', () => { isDragging = false; });
@@ -922,6 +969,9 @@ export class TableEditorPanel {
         }
         
         document.addEventListener('keydown', (e) => {
+            // Skip if focus is on an input element
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            
             if (isEditing) return;
             if (selection.activeRow < 0 || selection.activeCol < 0) return;
             
@@ -1556,6 +1606,87 @@ export class TableEditorPanel {
         // Save button handler
         document.getElementById('save-btn').addEventListener('click', () => {
             vscode.postMessage({ type: 'saveAndClose', data: tableData });
+        });
+        
+        // Auto-fit column widths
+        function autoFitColumnWidths() {
+            const table = document.getElementById('table-grid');
+            const maxWidth = parseInt(document.getElementById('max-width-input').value) || 300;
+            const colCount = tableData[0] ? tableData[0].length : 0;
+            
+            if (colCount === 0) return;
+            
+            // Reset column widths first
+            const colHeaders = document.querySelectorAll('.col-header');
+            const cells = document.querySelectorAll('.cell');
+            
+            colHeaders.forEach(header => header.style.width = 'auto');
+            cells.forEach(cell => cell.style.width = 'auto');
+            
+            // Create a hidden element to measure text width
+            const measureDiv = document.createElement('div');
+            measureDiv.style.cssText = 'position: absolute; visibility: hidden; white-space: nowrap; padding: 4px 8px;';
+            document.body.appendChild(measureDiv);
+            
+            // Calculate max width for each column
+            const columnWidths = [];
+            for (let col = 0; col < colCount; col++) {
+                let maxColWidth = 50; // Minimum width
+                
+                // Measure header width
+                measureDiv.textContent = getColumnName(col);
+                maxColWidth = Math.max(maxColWidth, measureDiv.offsetWidth);
+                
+                // Measure cell widths (handle <br> by measuring each line)
+                for (let row = 0; row < tableData.length; row++) {
+                    const value = tableData[row][col] || '';
+                    const renderedHtml = renderMarkdown(value);
+                    
+                    // Split by <br> and measure each line separately
+                    const lines = renderedHtml.split(/<br\\s*\\/?>/gi);
+                    for (const line of lines) {
+                        measureDiv.innerHTML = line;
+                        maxColWidth = Math.max(maxColWidth, measureDiv.offsetWidth);
+                    }
+                }
+                
+                // Apply max limit
+                columnWidths[col] = Math.min(maxColWidth, maxWidth);
+            }
+            
+            // Remove measure div
+            document.body.removeChild(measureDiv);
+            
+            // Set table-layout to fixed for width to take effect
+            const tableGrid = document.getElementById('table-grid');
+            tableGrid.style.tableLayout = 'fixed';
+            
+            // Apply widths
+            for (let col = 0; col < colCount; col++) {
+                const width = columnWidths[col] + 'px';
+                
+                // Set header width
+                const header = document.querySelector('.col-header[data-col="' + col + '"]');
+                if (header) {
+                    header.style.width = width;
+                    header.style.minWidth = width;
+                }
+                
+                // Set cell widths
+                document.querySelectorAll('.cell[data-col="' + col + '"]').forEach(cell => {
+                    cell.style.width = width;
+                    cell.style.minWidth = width;
+                    cell.style.maxWidth = width;
+                });
+            }
+            
+            console.log('Column widths applied:', columnWidths);
+        }
+        
+        // Auto Width button handler
+        document.getElementById('auto-width-btn').addEventListener('click', () => {
+            autoFitColumnWidths();
+            updateStatus('Column widths adjusted');
         });
     </script>
 </body>
