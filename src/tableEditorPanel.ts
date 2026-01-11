@@ -358,6 +358,14 @@ export class TableEditorPanel {
             background-color: var(--vscode-menu-selectionBackground);
             color: var(--vscode-menu-selectionForeground);
         }
+        .context-menu-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .context-menu-item.disabled:hover {
+            background-color: transparent;
+            color: var(--vscode-menu-foreground);
+        }
         .context-menu-separator {
             height: 1px;
             background-color: var(--vscode-menu-separatorBackground);
@@ -1213,14 +1221,15 @@ export class TableEditorPanel {
                 if (item.separator) {
                     return '<div class="context-menu-separator"></div>';
                 }
-                return '<div class="context-menu-item" data-action="' + item.action + '">' + item.label + '</div>';
+                const disabledClass = item.disabled ? ' disabled' : '';
+                return '<div class="context-menu-item' + disabledClass + '" data-action="' + item.action + '">' + item.label + '</div>';
             }).join('');
             
             menu.style.left = x + 'px';
             menu.style.top = y + 'px';
             menu.classList.add('visible');
             
-            menu.querySelectorAll('.context-menu-item').forEach(menuItem => {
+            menu.querySelectorAll('.context-menu-item:not(.disabled)').forEach(menuItem => {
                 menuItem.addEventListener('click', (e) => {
                     const action = e.target.dataset.action;
                     executeMenuAction(action);
@@ -1257,17 +1266,13 @@ export class TableEditorPanel {
                 { label: isSingleRow ? 'Delete Row' : 'Delete Rows', action: 'deleteRows' }
             ];
             
-            // Only show insert copied rows if single row and there are copied rows
-            if (isSingleRow && copiedRows && copiedRows.length > 0) {
-                items.push({ separator: true });
-                items.push({ label: 'Insert Copied Row(s)', action: 'pasteRows' });
-            }
-            
             // Only show insert options for single row selection
             if (isSingleRow) {
-                items.splice(1, 0, { separator: true });
-                items.splice(2, 0, { label: 'Insert Row Above', action: 'insertRowAbove' });
-                items.splice(3, 0, { label: 'Insert Row Below', action: 'insertRowBelow' });
+                items.push({ separator: true });
+                items.push({ label: 'Insert Row Above', action: 'insertRowAbove' });
+                items.push({ label: 'Insert Row Below', action: 'insertRowBelow' });
+                items.push({ separator: true });
+                items.push({ label: 'Insert Copied Row(s)', action: 'pasteRows', disabled: !(copiedRows && copiedRows.length > 0) });
             }
             
             showContextMenu(event.clientX, event.clientY, items);
@@ -1301,17 +1306,13 @@ export class TableEditorPanel {
                 { label: isSingleCol ? 'Delete Column' : 'Delete Columns', action: 'deleteCols' }
             ];
             
-            // Only show insert copied columns if single column and there are copied columns
-            if (isSingleCol && copiedCols && copiedCols.length > 0) {
-                items.push({ separator: true });
-                items.push({ label: 'Insert Copied Column(s)', action: 'pasteCols' });
-            }
-            
             // Only show insert options for single column selection
             if (isSingleCol) {
-                items.splice(1, 0, { separator: true });
-                items.splice(2, 0, { label: 'Insert Column Left', action: 'insertColLeft' });
-                items.splice(3, 0, { label: 'Insert Column Right', action: 'insertColRight' });
+                items.push({ separator: true });
+                items.push({ label: 'Insert Column Left', action: 'insertColLeft' });
+                items.push({ label: 'Insert Column Right', action: 'insertColRight' });
+                items.push({ separator: true });
+                items.push({ label: 'Insert Copied Column(s)', action: 'pasteCols', disabled: !(copiedCols && copiedCols.length > 0) });
             }
             
             showContextMenu(event.clientX, event.clientY, items);
