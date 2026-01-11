@@ -64,10 +64,15 @@ export class TableEditorPanel {
     ): TableEditorPanel {
         const key = `${documentUri.toString()}-${tableIndex}`;
 
+        // Read configuration
+        const config = vscode.workspace.getConfiguration('visualTableCanvas');
+        const openBeside = config.get<boolean>('openBeside', true);
+        const viewColumn = openBeside ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active;
+
         // If panel already exists, reveal it
         const existingPanel = TableEditorPanel.currentPanels.get(key);
         if (existingPanel) {
-            existingPanel._panel.reveal(vscode.ViewColumn.Beside);
+            existingPanel._panel.reveal(viewColumn);
             return existingPanel;
         }
 
@@ -75,7 +80,7 @@ export class TableEditorPanel {
         const panel = vscode.window.createWebviewPanel(
             TableEditorPanel.viewType,
             `Table Editor - Table ${tableIndex + 1}`,
-            vscode.ViewColumn.Beside,
+            viewColumn,
             {
                 enableScripts: true,
                 retainContextWhenHidden: true,
@@ -557,7 +562,6 @@ export class TableEditorPanel {
         
         window.addEventListener('message', event => {
             const message = event.data;
-            console.log('Received message:', message);
             try {
                 if (message.type === 'tableData') {
                     tableData = message.data;
@@ -1679,8 +1683,6 @@ export class TableEditorPanel {
                     cell.style.maxWidth = width;
                 });
             }
-            
-            console.log('Column widths applied:', columnWidths);
         }
         
         // Auto Width button handler
