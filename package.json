@@ -4,6 +4,23 @@
   "description": "Edit Markdown tables with an Excel-like UI",
   "version": "0.0.1",
   "publisher": "your-publisher-name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/visual-table-canvas-for-markdown"
+  },
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "keywords": [
+    "markdown",
+    "table",
+    "editor",
+    "excel",
+    "spreadsheet"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },

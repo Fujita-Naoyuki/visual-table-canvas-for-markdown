@@ -3,9 +3,14 @@
 src/**
 out/**
 node_modules/**
+docs/**
+coverage/**
+sample-md/**
 .gitignore
 .eslintrc.json
+.mocharc.json
 webpack.config.js
 tsconfig.json
 **/*.map
 **/*.ts
+!dist/**
