@@ -388,7 +388,7 @@ export class TableEditorPanel {
     </style>
 </head>
 <body>
-    <div class="table-container">
+    <div class="table-container" id="table-container" tabindex="0" style="outline: none;">
         <table id="table-grid">
             <thead id="table-header"></thead>
             <tbody id="table-body"></tbody>
@@ -490,6 +490,14 @@ export class TableEditorPanel {
                 header.addEventListener('mouseover', handleColHeaderMouseOver);
                 header.addEventListener('contextmenu', handleColHeaderContextMenu);
             });
+            
+            // Focus the table container to enable keyboard navigation
+            document.getElementById('table-container').focus();
+            
+            // Auto-select first cell if nothing is selected
+            if (selection.activeRow < 0 && tableData.length > 0) {
+                selectSingleCell(0, 0);
+            }
         }
         
         document.addEventListener('mouseup', () => { isDragging = false; });
@@ -867,6 +875,231 @@ export class TableEditorPanel {
             selectSingleCell(newRow, newCol);
         });
         
+        // Cell copy/paste handling
+        let copiedCells = null;
+        let copiedCellsRows = 0;
+        let copiedCellsCols = 0;
+        
+        document.addEventListener('keydown', (e) => {
+            if (isEditing) return;
+            
+            // Ctrl+C: Copy selected cells or rows/columns
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+                const minRow = Math.min(selection.startRow, selection.endRow);
+                const maxRow = Math.max(selection.startRow, selection.endRow);
+                const minCol = Math.min(selection.startCol, selection.endCol);
+                const maxCol = Math.max(selection.startCol, selection.endCol);
+                
+                if (selection.type === 'row') {
+                    // Copy rows
+                    copiedRows = [];
+                    for (let r = minRow; r <= maxRow; r++) {
+                        copiedRows.push([...tableData[r]]);
+                    }
+                    copiedCols = null;
+                    copiedCells = null;
+                    updateStatus('Copied ' + copiedRows.length + ' row(s)');
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (selection.type === 'column') {
+                    // Copy columns
+                    copiedCols = [];
+                    for (let c = minCol; c <= maxCol; c++) {
+                        const colData = tableData.map(row => row[c] || '');
+                        copiedCols.push(colData);
+                    }
+                    copiedRows = null;
+                    copiedCells = null;
+                    updateStatus('Copied ' + copiedCols.length + ' column(s)');
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Copy cells
+                copiedCells = [];
+                for (let r = minRow; r <= maxRow; r++) {
+                    const rowData = [];
+                    for (let c = minCol; c <= maxCol; c++) {
+                        rowData.push(tableData[r][c] || '');
+                    }
+                    copiedCells.push(rowData);
+                }
+                copiedCellsRows = maxRow - minRow + 1;
+                copiedCellsCols = maxCol - minCol + 1;
+                copiedRows = null;
+                copiedCols = null;
+                
+                updateStatus('Copied ' + copiedCellsRows + 'x' + copiedCellsCols + ' cells');
+                e.preventDefault();
+                return;
+            }
+            
+            // Ctrl+V: Paste cells or rows/columns
+            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                const minRow = Math.min(selection.startRow, selection.endRow);
+                const maxRow = Math.max(selection.startRow, selection.endRow);
+                const minCol = Math.min(selection.startCol, selection.endCol);
+                const maxCol = Math.max(selection.startCol, selection.endCol);
+                
+                // Paste rows
+                if (selection.type === 'row' && copiedRows && copiedRows.length > 0) {
+                    const selRowCount = maxRow - minRow + 1;
+                    const copyRowCount = copiedRows.length;
+                    
+                    // Single row copied -> apply to all selected rows
+                    if (copyRowCount === 1) {
+                        for (let r = minRow; r <= maxRow; r++) {
+                            for (let c = 0; c < copiedRows[0].length && c < tableData[r].length; c++) {
+                                tableData[r][c] = copiedRows[0][c];
+                            }
+                        }
+                        notifyChange();
+                        renderTable();
+                        updateStatus('Pasted to ' + selRowCount + ' row(s)');
+                    }
+                    // Single row selected + multiple rows copied -> paste from start point
+                    else if (selRowCount === 1) {
+                        for (let i = 0; i < copyRowCount && (minRow + i) < tableData.length; i++) {
+                            for (let c = 0; c < copiedRows[i].length && c < tableData[minRow + i].length; c++) {
+                                tableData[minRow + i][c] = copiedRows[i][c];
+                            }
+                        }
+                        notifyChange();
+                        renderTable();
+                        updateStatus('Pasted ' + copyRowCount + ' row(s)');
+                    }
+                    // Same size -> paste directly
+                    else if (selRowCount === copyRowCount) {
+                        for (let i = 0; i < copyRowCount; i++) {
+                            for (let c = 0; c < copiedRows[i].length && c < tableData[minRow + i].length; c++) {
+                                tableData[minRow + i][c] = copiedRows[i][c];
+                            }
+                        }
+                        notifyChange();
+                        renderTable();
+                        updateStatus('Pasted ' + copyRowCount + ' row(s)');
+                    }
+                    // Different size -> error
+                    else {
+                        updateStatus('Error: Selection (' + selRowCount + ' rows) does not match copied (' + copyRowCount + ' rows)');
+                    }
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Paste columns
+                if (selection.type === 'column' && copiedCols && copiedCols.length > 0) {
+                    const selColCount = maxCol - minCol + 1;
+                    const copyColCount = copiedCols.length;
+                    
+                    // Single column copied -> apply to all selected columns
+                    if (copyColCount === 1) {
+                        for (let c = minCol; c <= maxCol; c++) {
+                            for (let r = 0; r < copiedCols[0].length && r < tableData.length; r++) {
+                                tableData[r][c] = copiedCols[0][r];
+                            }
+                        }
+                        notifyChange();
+                        renderTable();
+                        updateStatus('Pasted to ' + selColCount + ' column(s)');
+                    }
+                    // Single column selected + multiple columns copied -> paste from start point
+                    else if (selColCount === 1) {
+                        for (let i = 0; i < copyColCount && (minCol + i) < tableData[0].length; i++) {
+                            for (let r = 0; r < copiedCols[i].length && r < tableData.length; r++) {
+                                tableData[r][minCol + i] = copiedCols[i][r];
+                            }
+                        }
+                        notifyChange();
+                        renderTable();
+                        updateStatus('Pasted ' + copyColCount + ' column(s)');
+                    }
+                    // Same size -> paste directly
+                    else if (selColCount === copyColCount) {
+                        for (let i = 0; i < copyColCount; i++) {
+                            for (let r = 0; r < copiedCols[i].length && r < tableData.length; r++) {
+                                tableData[r][minCol + i] = copiedCols[i][r];
+                            }
+                        }
+                        notifyChange();
+                        renderTable();
+                        updateStatus('Pasted ' + copyColCount + ' column(s)');
+                    }
+                    // Different size -> error
+                    else {
+                        updateStatus('Error: Selection (' + selColCount + ' columns) does not match copied (' + copyColCount + ' columns)');
+                    }
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Row/column selection but wrong copied type
+                if (selection.type === 'row' || selection.type === 'column') {
+                    updateStatus('Nothing to paste (copy rows/columns first)');
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Paste cells
+                if (!copiedCells || copiedCells.length === 0) {
+                    updateStatus('Nothing to paste');
+                    e.preventDefault();
+                    return;
+                }
+                
+                const selRows = maxRow - minRow + 1;
+                const selCols = maxCol - minCol + 1;
+                
+                // Single cell copied -> apply to all selected cells
+                if (copiedCellsRows === 1 && copiedCellsCols === 1) {
+                    const value = copiedCells[0][0];
+                    for (let r = minRow; r <= maxRow; r++) {
+                        for (let c = minCol; c <= maxCol; c++) {
+                            tableData[r][c] = value;
+                        }
+                    }
+                    notifyChange();
+                    renderTable();
+                    updateStatus('Pasted to ' + selRows + 'x' + selCols + ' cells');
+                }
+                // Single cell selected + multiple cells copied -> paste from start point
+                else if (selRows === 1 && selCols === 1) {
+                    for (let r = 0; r < copiedCellsRows; r++) {
+                        for (let c = 0; c < copiedCellsCols; c++) {
+                            const targetRow = minRow + r;
+                            const targetCol = minCol + c;
+                            if (targetRow < tableData.length && targetCol < tableData[0].length) {
+                                tableData[targetRow][targetCol] = copiedCells[r][c];
+                            }
+                        }
+                    }
+                    notifyChange();
+                    renderTable();
+                    updateStatus('Pasted ' + copiedCellsRows + 'x' + copiedCellsCols + ' cells');
+                }
+                // Same size selection and copied -> paste directly
+                else if (selRows === copiedCellsRows && selCols === copiedCellsCols) {
+                    for (let r = 0; r < copiedCellsRows; r++) {
+                        for (let c = 0; c < copiedCellsCols; c++) {
+                            tableData[minRow + r][minCol + c] = copiedCells[r][c];
+                        }
+                    }
+                    notifyChange();
+                    renderTable();
+                    updateStatus('Pasted ' + copiedCellsRows + 'x' + copiedCellsCols + ' cells');
+                }
+                // Different size -> error
+                else {
+                    updateStatus('Error: Selection size (' + selRows + 'x' + selCols + ') does not match copied size (' + copiedCellsRows + 'x' + copiedCellsCols + ')');
+                }
+                
+                e.preventDefault();
+                return;
+            }
+        });
+        
         // Context menu handling
         let copiedRows = null;
         let copiedCols = null;
@@ -924,13 +1157,12 @@ export class TableEditorPanel {
             const isSingleRow = minRow === maxRow;
             
             const items = [
-                { label: isSingleRow ? 'Delete Row' : 'Delete Rows', action: 'deleteRows' },
-                { separator: true },
-                { label: isSingleRow ? 'Copy Row' : 'Copy Rows', action: 'copyRows' }
+                { label: isSingleRow ? 'Delete Row' : 'Delete Rows', action: 'deleteRows' }
             ];
             
             // Only show insert copied rows if there are copied rows
             if (copiedRows && copiedRows.length > 0) {
+                items.push({ separator: true });
                 items.push({ label: 'Insert Copied Row(s)', action: 'pasteRows' });
             }
             
@@ -969,13 +1201,12 @@ export class TableEditorPanel {
             const isSingleCol = minCol === maxCol;
             
             const items = [
-                { label: isSingleCol ? 'Delete Column' : 'Delete Columns', action: 'deleteCols' },
-                { separator: true },
-                { label: isSingleCol ? 'Copy Column' : 'Copy Columns', action: 'copyCols' }
+                { label: isSingleCol ? 'Delete Column' : 'Delete Columns', action: 'deleteCols' }
             ];
             
             // Only show insert copied columns if there are copied columns
             if (copiedCols && copiedCols.length > 0) {
+                items.push({ separator: true });
                 items.push({ label: 'Insert Copied Column(s)', action: 'pasteCols' });
             }
             
@@ -1026,14 +1257,6 @@ export class TableEditorPanel {
                         selectSingleCell(maxRow + 1, 0);
                     });
                     break;
-                case 'copyRows':
-                    copiedRows = [];
-                    for (let r = minRow; r <= maxRow; r++) {
-                        copiedRows.push([...tableData[r]]);
-                    }
-                    copiedCols = null;
-                    updateStatus('Copied ' + copiedRows.length + ' row(s)');
-                    break;
                 case 'pasteRows':
                     if (copiedRows && copiedRows.length > 0) {
                         for (let i = 0; i < copiedRows.length; i++) {
@@ -1077,15 +1300,6 @@ export class TableEditorPanel {
                         renderTable();
                         selectSingleCell(0, maxCol + 1);
                     });
-                    break;
-                case 'copyCols':
-                    copiedCols = [];
-                    for (let c = minCol; c <= maxCol; c++) {
-                        const colData = tableData.map(row => row[c] || '');
-                        copiedCols.push(colData);
-                    }
-                    copiedRows = null;
-                    updateStatus('Copied ' + copiedCols.length + ' column(s)');
                     break;
                 case 'pasteCols':
                     if (copiedCols && copiedCols.length > 0) {
