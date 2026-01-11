@@ -1257,8 +1257,8 @@ export class TableEditorPanel {
                 { label: isSingleRow ? 'Delete Row' : 'Delete Rows', action: 'deleteRows' }
             ];
             
-            // Only show insert copied rows if there are copied rows
-            if (copiedRows && copiedRows.length > 0) {
+            // Only show insert copied rows if single row and there are copied rows
+            if (isSingleRow && copiedRows && copiedRows.length > 0) {
                 items.push({ separator: true });
                 items.push({ label: 'Insert Copied Row(s)', action: 'pasteRows' });
             }
@@ -1301,8 +1301,8 @@ export class TableEditorPanel {
                 { label: isSingleCol ? 'Delete Column' : 'Delete Columns', action: 'deleteCols' }
             ];
             
-            // Only show insert copied columns if there are copied columns
-            if (copiedCols && copiedCols.length > 0) {
+            // Only show insert copied columns if single column and there are copied columns
+            if (isSingleCol && copiedCols && copiedCols.length > 0) {
                 items.push({ separator: true });
                 items.push({ label: 'Insert Copied Column(s)', action: 'pasteCols' });
             }
