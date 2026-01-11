@@ -98,13 +98,13 @@
   - [x] ペーストのUndo
   - [x] 行/列追加のUndo
   - [x] 行/列削除のUndo
-  - [ ] セルクリアのUndo（Phase 10で実装）
+  - [x] セルクリアのUndo
 
 ---
 
 ## Phase 10: Delete機能
 
-- [ ] Delete キーで選択範囲をクリア
+- [x] Delete キーで選択範囲をクリア
 
 ---
 

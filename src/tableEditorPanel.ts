@@ -886,6 +886,27 @@ export class TableEditorPanel {
                     if (activeCell) startEditing(activeCell);
                     e.preventDefault();
                     return;
+                case 'Delete':
+                case 'Backspace':
+                    // Clear selected cells
+                    const minRow = Math.min(selection.startRow, selection.endRow);
+                    const maxRow = Math.max(selection.startRow, selection.endRow);
+                    const minCol = Math.min(selection.startCol, selection.endCol);
+                    const maxCol = Math.max(selection.startCol, selection.endCol);
+                    
+                    if (minRow >= 0 && minCol >= 0) {
+                        saveUndoState();
+                        for (let r = minRow; r <= maxRow; r++) {
+                            for (let c = minCol; c <= maxCol; c++) {
+                                tableData[r][c] = '';
+                            }
+                        }
+                        notifyChange();
+                        renderTable();
+                        updateStatus('Cleared ' + (maxRow - minRow + 1) + 'x' + (maxCol - minCol + 1) + ' cells');
+                    }
+                    e.preventDefault();
+                    return;
                 default:
                     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
                         const activeCell = getActiveCell();
