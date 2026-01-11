@@ -307,6 +307,23 @@ export class TableEditorPanel {
             resize: none;
             overflow: hidden;
         }
+        .cell code {
+            background-color: var(--vscode-textCodeBlock-background);
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-family: var(--vscode-editor-font-family), monospace;
+            font-size: 0.9em;
+        }
+        .cell a {
+            color: var(--vscode-textLink-foreground);
+            text-decoration: none;
+        }
+        .cell a:hover {
+            text-decoration: underline;
+        }
+        .cell del {
+            color: var(--vscode-disabledForeground);
+        }
         .status-bar {
             margin-top: 10px;
             padding: 5px 10px;
@@ -534,7 +551,7 @@ export class TableEditorPanel {
                 bodyHtml += '<td class="row-header" data-row="' + row + '">' + (row + 1) + '</td>';
                 for (let col = 0; col < columnCount; col++) {
                     const value = tableData[row][col] || '';
-                    bodyHtml += '<td class="cell" data-row="' + row + '" data-col="' + col + '">' + escapeHtml(value) + '</td>';
+                    bodyHtml += '<td class="cell" data-row="' + row + '" data-col="' + col + '">' + renderMarkdown(value) + '</td>';
                 }
                 bodyHtml += '</tr>';
             }
@@ -582,6 +599,32 @@ export class TableEditorPanel {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+        
+        function renderMarkdown(text) {
+            // First escape HTML to prevent XSS
+            let html = escapeHtml(text);
+            
+            // Code: \`text\`
+            html = html.replace(new RegExp('\`([^\`]+)\`', 'g'), '<code>$1</code>');
+            
+            // Bold: **text** or __text__
+            html = html.replace(new RegExp('\\\\*\\\\*([^*]+)\\\\*\\\\*', 'g'), '<strong>$1</strong>');
+            html = html.replace(new RegExp('__([^_]+)__', 'g'), '<strong>$1</strong>');
+            
+            // Italic: *text* or _text_ (must be after bold)
+            html = html.replace(new RegExp('\\\\*([^*]+)\\\\*', 'g'), '<em>$1</em>');
+            
+            // Strikethrough: ~~text~~
+            html = html.replace(new RegExp('~~([^~]+)~~', 'g'), '<del>$1</del>');
+            
+            // Links: [text](url)
+            html = html.replace(new RegExp('\\\\[([^\\\\]]+)\\\\]\\\\(([^)]+)\\\\)', 'g'), '<a href="$2" target="_blank">$1</a>');
+            
+            // Line breaks: <br> (escaped as &lt;br&gt;)
+            html = html.replace(new RegExp('&lt;br&gt;', 'gi'), '<br>');
+            
+            return html;
         }
         
         function handleCellMouseDown(event) {
@@ -852,7 +895,7 @@ export class TableEditorPanel {
             tableData[row][col] = newValue;
             
             cell.classList.remove('editing');
-            cell.innerHTML = escapeHtml(newValue);
+            cell.innerHTML = renderMarkdown(newValue);
             isEditing = false;
             
             vscode.postMessage({ type: 'updateTable', data: tableData });
@@ -868,7 +911,7 @@ export class TableEditorPanel {
             const value = tableData[row][col] || '';
             
             cell.classList.remove('editing');
-            cell.innerHTML = escapeHtml(value);
+            cell.innerHTML = renderMarkdown(value);
             isEditing = false;
             
             updateStatus('Ready');
