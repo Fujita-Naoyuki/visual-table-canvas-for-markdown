@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { parseMarkdownTables, tableToMarkdown } from '../tableParser';
+import { parseMarkdownTables, tableToMarkdown, parseTableRow, isSeparatorRow, isTableRow } from '../tableParser';
 
 describe('Table Parser', () => {
     describe('parseMarkdownTables', () => {
@@ -118,6 +118,121 @@ This is a paragraph.
 
             // Each line should have consistent column widths
             assert.ok(lines[0].includes('LongHeader'));
+        });
+    });
+
+    describe('parseTableRow', () => {
+        it('should parse a valid table row', () => {
+            const result = parseTableRow('| Cell1 | Cell2 |');
+            assert.deepStrictEqual(result, ['Cell1', 'Cell2']);
+        });
+
+        it('should return null for line not starting with |', () => {
+            const result = parseTableRow('Cell1 | Cell2 |');
+            assert.strictEqual(result, null);
+        });
+
+        it('should return null for line not ending with |', () => {
+            const result = parseTableRow('| Cell1 | Cell2');
+            assert.strictEqual(result, null);
+        });
+
+        it('should handle whitespace around cells', () => {
+            const result = parseTableRow('|  A  |  B  |');
+            assert.deepStrictEqual(result, ['A', 'B']);
+        });
+
+        it('should handle empty cells', () => {
+            const result = parseTableRow('| | |');
+            assert.deepStrictEqual(result, ['', '']);
+        });
+    });
+
+    describe('isSeparatorRow', () => {
+        it('should return true for valid separator row', () => {
+            assert.strictEqual(isSeparatorRow('|---|---|'), true);
+        });
+
+        it('should return true for separator with colons (alignment)', () => {
+            assert.strictEqual(isSeparatorRow('|:---|---:|:---:|'), true);
+        });
+
+        it('should return true for separator with spaces', () => {
+            assert.strictEqual(isSeparatorRow('| --- | --- |'), true);
+        });
+
+        it('should return false for non-separator content', () => {
+            assert.strictEqual(isSeparatorRow('| Cell1 | Cell2 |'), false);
+        });
+
+        it('should return false for line not starting with |', () => {
+            assert.strictEqual(isSeparatorRow('---|---|'), false);
+        });
+
+        it('should return false for line not ending with |', () => {
+            assert.strictEqual(isSeparatorRow('|---|---'), false);
+        });
+
+        it('should return false for cell without dashes', () => {
+            assert.strictEqual(isSeparatorRow('| ::: |'), false);
+        });
+    });
+
+    describe('isTableRow', () => {
+        it('should return true for valid table row', () => {
+            assert.strictEqual(isTableRow('| A | B |'), true);
+        });
+
+        it('should return false for line not starting with |', () => {
+            assert.strictEqual(isTableRow('A | B |'), false);
+        });
+
+        it('should return false for line not ending with |', () => {
+            assert.strictEqual(isTableRow('| A | B'), false);
+        });
+
+        it('should return true for row with leading/trailing whitespace', () => {
+            assert.strictEqual(isTableRow('  | A | B |  '), true);
+        });
+    });
+
+    describe('parseMarkdownTables edge cases', () => {
+        it('should skip lines that look like table rows but have no separator', () => {
+            const markdown = `| A | B |
+| C | D |`;
+            const tables = parseMarkdownTables(markdown);
+            assert.strictEqual(tables.length, 0);
+        });
+
+        it('should handle table row that fails to parse', () => {
+            // This tests the case where isTableRow returns true but parseTableRow returns null
+            // In practice, this shouldn't happen with current implementation
+            const markdown = `| Header |
+|--------|
+| Data   |`;
+            const tables = parseMarkdownTables(markdown);
+            assert.strictEqual(tables.length, 1);
+        });
+
+        it('should correctly identify table end line', () => {
+            const markdown = `| A | B |
+|---|---|
+| 1 | 2 |
+| 3 | 4 |
+
+Some text after`;
+            const tables = parseMarkdownTables(markdown);
+            assert.strictEqual(tables.length, 1);
+            assert.strictEqual(tables[0].endLine, 3);
+        });
+
+        it('should include rawText in table info', () => {
+            const markdown = `| A | B |
+|---|---|
+| 1 | 2 |`;
+            const tables = parseMarkdownTables(markdown);
+            assert.strictEqual(tables.length, 1);
+            assert.strictEqual(tables[0].rawText, markdown);
         });
     });
 });

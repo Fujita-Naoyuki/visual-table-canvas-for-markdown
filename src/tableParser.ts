@@ -15,7 +15,7 @@ export interface TableInfo {
 /**
  * Parses a single table row and extracts cell values
  */
-function parseTableRow(line: string): string[] | null {
+export function parseTableRow(line: string): string[] | null {
     const trimmed = line.trim();
 
     // Table rows must start and end with |
@@ -33,7 +33,7 @@ function parseTableRow(line: string): string[] | null {
 /**
  * Checks if a line is a separator row (e.g., |---|---|)
  */
-function isSeparatorRow(line: string): boolean {
+export function isSeparatorRow(line: string): boolean {
     const trimmed = line.trim();
 
     if (!trimmed.startsWith('|') || !trimmed.endsWith('|')) {
@@ -50,7 +50,7 @@ function isSeparatorRow(line: string): boolean {
 /**
  * Checks if a line is a valid table row
  */
-function isTableRow(line: string): boolean {
+export function isTableRow(line: string): boolean {
     const trimmed = line.trim();
     return trimmed.startsWith('|') && trimmed.endsWith('|');
 }
