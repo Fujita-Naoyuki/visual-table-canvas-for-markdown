@@ -110,11 +110,11 @@
 
 ## Phase 11: 保存機能
 
-- [ ] onDidDisposeイベントの監視
-- [ ] 変更検知ロジック
-- [ ] 確認ダイアログ表示
-- [ ] テーブルデータ → Markdown変換
-- [ ] WorkspaceEdit APIでファイル更新
+- [x] onDidDisposeイベントの監視
+- [x] 変更検知ロジック
+- [x] 確認ダイアログ表示
+- [x] テーブルデータ → Markdown変換
+- [x] WorkspaceEdit APIでファイル更新
 
 ---
 
