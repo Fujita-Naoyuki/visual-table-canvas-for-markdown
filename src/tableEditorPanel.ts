@@ -55,6 +55,7 @@ export class TableEditorPanel {
     private _disposables: vscode.Disposable[] = [];
     private _isDirty: boolean = false;
     private _currentData: string[][];
+    private _defaultMaxColumnWidth: number = 300;
 
     public static createOrShow(
         extensionUri: vscode.Uri,
@@ -113,6 +114,10 @@ export class TableEditorPanel {
         this._tableInfo = tableInfo;
         this._tableIndex = tableIndex;
         this._currentData = JSON.parse(JSON.stringify(tableInfo.data));
+
+        // Read configuration for default max column width
+        const config = vscode.workspace.getConfiguration('visualTableCanvas');
+        this._defaultMaxColumnWidth = config.get<number>('defaultMaxColumnWidth', 300);
 
         // Set the webview's initial html content
         this._update();
@@ -490,7 +495,7 @@ export class TableEditorPanel {
         <div class="toolbar-left">
             <button class="toolbar-btn" id="auto-width-btn">Auto Width</button>
             <span class="toolbar-label">Max:</span>
-            <input type="number" class="toolbar-input" id="max-width-input" value="300" min="50" max="1000">
+            <input type="number" class="toolbar-input" id="max-width-input" value="${this._defaultMaxColumnWidth}" min="50" max="1000">
             <span class="toolbar-label">px</span>
         </div>
         <div class="toolbar-right">
