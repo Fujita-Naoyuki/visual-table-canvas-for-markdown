@@ -917,7 +917,7 @@ export class TableEditorPanel {
             cell.innerHTML = '<textarea rows="1">' + escapeHtml(value) + '</textarea>';
             const textarea = cell.querySelector('textarea');
             textarea.focus();
-            textarea.select();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
             autoResizeTextarea(textarea);
             
             let isCancelled = false;
