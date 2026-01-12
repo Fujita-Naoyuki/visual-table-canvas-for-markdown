@@ -842,6 +842,61 @@ export class TableEditorPanel {
             updateSelectionDisplay();
         }
         
+        // Toggle markdown formatting on selected text
+        function toggleFormatting(textarea, prefix, suffix) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            if (start === end) return; // No selection, do nothing
+            
+            const selectedText = textarea.value.substring(start, end);
+            let newText, newStart, newEnd;
+            
+            // Check if already formatted
+            if (selectedText.startsWith(prefix) && selectedText.endsWith(suffix) && selectedText.length >= prefix.length + suffix.length) {
+                // Remove formatting
+                newText = selectedText.slice(prefix.length, -suffix.length);
+                newStart = start;
+                newEnd = start + newText.length;
+            } else {
+                // Add formatting
+                newText = prefix + selectedText + suffix;
+                newStart = start;
+                newEnd = start + newText.length;
+            }
+            
+            textarea.value = textarea.value.substring(0, start) + newText + textarea.value.substring(end);
+            textarea.selectionStart = newStart;
+            textarea.selectionEnd = newEnd;
+        }
+        
+        // Check if string is a valid URL
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+        
+        // Handle paste as link when clipboard contains URL
+        function handlePasteAsLink(textarea, e) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            if (start === end) return false; // No selection, use normal paste
+            
+            const clipboardText = e.clipboardData?.getData('text') || '';
+            if (!isValidUrl(clipboardText)) return false;
+            
+            e.preventDefault();
+            const selectedText = textarea.value.substring(start, end);
+            const linkText = '[' + selectedText + '](' + clipboardText + ')';
+            textarea.value = textarea.value.substring(0, start) + linkText + textarea.value.substring(end);
+            textarea.selectionStart = start;
+            textarea.selectionEnd = start + linkText.length;
+            return true;
+        }
+        
         function startEditing(cell) {
             if (isEditing) return;
             
@@ -883,10 +938,29 @@ export class TableEditorPanel {
                     e.preventDefault();
                     isCancelled = true;
                     cancelEditing(cell);
+                } else if (e.ctrlKey && !e.shiftKey && e.key === 'b') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFormatting(textarea, '**', '**');
+                } else if (e.ctrlKey && !e.shiftKey && e.key === 'i') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFormatting(textarea, '*', '*');
+                } else if (e.ctrlKey && !e.shiftKey && e.key === '5') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFormatting(textarea, '~~', '~~');
+                } else if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFormatting(textarea, '\`', '\`');
                 }
             });
+            textarea.addEventListener('paste', (e) => {
+                handlePasteAsLink(textarea, e);
+            });
             
-            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' (Alt+Enter for <br>)');
+            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' | Alt+Enter→br · Ctrl+B→Bold · Ctrl+I→Italic · Ctrl+5→Strike · Ctrl+Shift+C→Code');
         }
         
         function autoResizeTextarea(textarea) {
@@ -934,10 +1008,29 @@ export class TableEditorPanel {
                     e.preventDefault();
                     isCancelled = true;
                     cancelEditing(cell);
+                } else if (e.ctrlKey && !e.shiftKey && e.key === 'b') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFormatting(textarea, '**', '**');
+                } else if (e.ctrlKey && !e.shiftKey && e.key === 'i') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFormatting(textarea, '*', '*');
+                } else if (e.ctrlKey && !e.shiftKey && e.key === '5') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFormatting(textarea, '~~', '~~');
+                } else if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleFormatting(textarea, '\`', '\`');
                 }
             });
+            textarea.addEventListener('paste', (e) => {
+                handlePasteAsLink(textarea, e);
+            });
             
-            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' (Alt+Enter for <br>)');
+            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' | Alt+Enter→br · Ctrl+B→Bold · Ctrl+I→Italic · Ctrl+5→Strike · Ctrl+Shift+C→Code');
         }
         
         function finishEditing(cell, newValue) {

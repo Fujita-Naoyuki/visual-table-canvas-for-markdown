@@ -42,8 +42,14 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 | Key | Action |
 |-----|--------|
 | Enter / Tab | Confirm edit |
-| Alt+Enter | Insert line break (`<br>`) |
 | Escape | Cancel edit |
+| Alt+Enter | Insert line break (`<br>`) |
+| Ctrl+B | Toggle bold (`**text**`) |
+| Ctrl+I | Toggle italic (`*text*`) |
+| Ctrl+5 | Toggle strikethrough (`~~text~~`) |
+| Ctrl+Shift+C | Toggle code (`` `text` ``) |
+| Ctrl+V | Paste as link if clipboard is URL |
+
 
 ## Copy & Paste Behavior
 
