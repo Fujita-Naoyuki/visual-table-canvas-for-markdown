@@ -248,12 +248,15 @@ export class TableEditorPanel {
         table {
             border-collapse: collapse;
             user-select: none;
+            table-layout: fixed;
         }
         th, td {
             border: 1px solid var(--vscode-panel-border);
             padding: 4px 8px;
             min-width: 60px;
             text-align: left;
+            word-break: break-all;
+            overflow-wrap: break-word;
         }
         th {
             background-color: var(--vscode-editor-lineHighlightBackground);
@@ -894,6 +897,8 @@ export class TableEditorPanel {
             textarea.value = textarea.value.substring(0, start) + linkText + textarea.value.substring(end);
             textarea.selectionStart = start;
             textarea.selectionEnd = start + linkText.length;
+            // Trigger input event to auto-resize textarea
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
             return true;
         }
         
