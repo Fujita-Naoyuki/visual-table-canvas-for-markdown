@@ -102,17 +102,6 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 
 - VS Code 1.85.0 or later
 
-## Installation
-
-### From Marketplace
-
-Search for "Visual Table Canvas for Markdown" in VS Code Extensions.
-
-### From VSIX
-
-1. Download the `.vsix` file
-2. Run `code --install-extension visual-table-canvas-for-markdown-x.x.x.vsix`
-
 ## Development
 
 ```bash
