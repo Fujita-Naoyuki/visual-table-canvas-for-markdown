@@ -541,8 +541,9 @@ export class TableEditorPanel {
             type: 'cell' // 'cell', 'row', 'column'
         };
         
-        // Undo stack
+        // Undo/Redo stacks
         const undoStack = [];
+        const redoStack = [];
         const MAX_UNDO_STACK = 50;
         
         function saveUndoState() {
@@ -552,6 +553,8 @@ export class TableEditorPanel {
             if (undoStack.length > MAX_UNDO_STACK) {
                 undoStack.shift();
             }
+            // Clear redo stack on new change
+            redoStack.length = 0;
         }
         
         function undo() {
@@ -559,10 +562,25 @@ export class TableEditorPanel {
                 updateStatus('Nothing to undo');
                 return;
             }
+            // Save current state to redo stack
+            redoStack.push(tableData.map(row => [...row]));
             tableData = undoStack.pop();
             notifyChange();
             renderTable();
             updateStatus('Undo');
+        }
+        
+        function redo() {
+            if (redoStack.length === 0) {
+                updateStatus('Nothing to redo');
+                return;
+            }
+            // Save current state to undo stack
+            undoStack.push(tableData.map(row => [...row]));
+            tableData = redoStack.pop();
+            notifyChange();
+            renderTable();
+            updateStatus('Redo');
         }
         
         // Notify extension that webview is ready
@@ -1225,6 +1243,13 @@ export class TableEditorPanel {
             // Ctrl+Z: Undo
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 undo();
+                e.preventDefault();
+                return;
+            }
+            
+            // Ctrl+Y: Redo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                redo();
                 e.preventDefault();
                 return;
             }
