@@ -725,12 +725,19 @@ export class TableEditorPanel {
             const columnCount = tableData[0]?.length || 0;
             
             isDragging = true;
-            selection = {
-                startRow: row, startCol: 0,
-                endRow: row, endCol: columnCount - 1,
-                activeRow: row, activeCol: 0,
-                type: 'row'
-            };
+            
+            // Shift+Click: extend selection from current row to clicked row
+            if (event.shiftKey && selection.type === 'row' && selection.startRow >= 0) {
+                selection.endRow = row;
+                selection.activeRow = row;
+            } else {
+                selection = {
+                    startRow: row, startCol: 0,
+                    endRow: row, endCol: columnCount - 1,
+                    activeRow: row, activeCol: 0,
+                    type: 'row'
+                };
+            }
             updateSelectionDisplay();
             event.preventDefault();
         }
@@ -755,12 +762,19 @@ export class TableEditorPanel {
             const rowCount = tableData.length;
             
             isDragging = true;
-            selection = {
-                startRow: 0, startCol: col,
-                endRow: rowCount - 1, endCol: col,
-                activeRow: 0, activeCol: col,
-                type: 'column'
-            };
+            
+            // Shift+Click: extend selection from current column to clicked column
+            if (event.shiftKey && selection.type === 'column' && selection.startCol >= 0) {
+                selection.endCol = col;
+                selection.activeCol = col;
+            } else {
+                selection = {
+                    startRow: 0, startCol: col,
+                    endRow: rowCount - 1, endCol: col,
+                    activeRow: 0, activeCol: col,
+                    type: 'column'
+                };
+            }
             updateSelectionDisplay();
             event.preventDefault();
         }
