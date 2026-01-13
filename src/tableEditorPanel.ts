@@ -965,14 +965,14 @@ export class TableEditorPanel {
             });
             textarea.addEventListener('input', () => autoResizeTextarea(textarea));
             textarea.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && e.altKey) {
-                    // Alt+Enter: insert <br>
+                if (e.key === 'Enter' && (e.altKey || e.shiftKey)) {
+                    // Alt+Enter or Shift+Enter: insert <br>
                     e.preventDefault();
                     const start = textarea.selectionStart;
                     const end = textarea.selectionEnd;
                     textarea.value = textarea.value.substring(0, start) + '<br>' + textarea.value.substring(end);
                     textarea.selectionStart = textarea.selectionEnd = start + 4;
-                } else if (e.key === 'Enter' && !e.altKey) {
+                } else if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
                     e.preventDefault();
                     finishEditing(cell, textarea.value);
                 } else if (e.key === 'Escape') {
@@ -1001,7 +1001,7 @@ export class TableEditorPanel {
                 handlePasteAsLink(textarea, e);
             });
             
-            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' | Alt+Enter→br · Ctrl+B→Bold · Ctrl+I→Italic · Ctrl+5→Strike · Ctrl+Shift+C→Code');
+            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' | Alt/Shift+Enter→br · Ctrl+B→Bold · Ctrl+I→Italic · Ctrl+5→Strike · Ctrl+Shift+C→Code');
         }
         
         function autoResizeTextarea(textarea) {
@@ -1035,14 +1035,14 @@ export class TableEditorPanel {
             });
             textarea.addEventListener('input', () => autoResizeTextarea(textarea));
             textarea.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && e.altKey) {
-                    // Alt+Enter: insert <br>
+                if (e.key === 'Enter' && (e.altKey || e.shiftKey)) {
+                    // Alt+Enter or Shift+Enter: insert <br>
                     e.preventDefault();
                     const start = textarea.selectionStart;
                     const end = textarea.selectionEnd;
                     textarea.value = textarea.value.substring(0, start) + '<br>' + textarea.value.substring(end);
                     textarea.selectionStart = textarea.selectionEnd = start + 4;
-                } else if (e.key === 'Enter' && !e.altKey) {
+                } else if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
                     e.preventDefault();
                     finishEditing(cell, textarea.value);
                 } else if (e.key === 'Escape') {
@@ -1071,7 +1071,7 @@ export class TableEditorPanel {
                 handlePasteAsLink(textarea, e);
             });
             
-            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' | Alt+Enter→br · Ctrl+B→Bold · Ctrl+I→Italic · Ctrl+5→Strike · Ctrl+Shift+C→Code');
+            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' | Alt/Shift+Enter→br · Ctrl+B→Bold · Ctrl+I→Italic · Ctrl+5→Strike · Ctrl+Shift+C→Code');
         }
         
         function finishEditing(cell, newValue) {
