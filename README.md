@@ -42,28 +42,34 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 | Key | Action |
 |-----|--------|
 | Enter / Tab | Confirm edit |
-| Alt+Enter | Insert line break (`<br>`) |
 | Escape | Cancel edit |
+| Alt+Enter | Insert line break (`<br>`) |
+| Ctrl+B | Toggle bold (`**text**`) |
+| Ctrl+I | Toggle italic (`*text*`) |
+| Ctrl+5 | Toggle strikethrough (`~~text~~`) |
+| Ctrl+Shift+C | Toggle code (`` `text` ``) |
+| Ctrl+V | Paste as link if clipboard is URL |
+
 
 ## Copy & Paste Behavior
 
 ### Cell Paste (Ctrl+V)
 
-| Scenario | Behavior |
-|----------|----------|
-| Multiple cells selected + Single cell copied | Apply to all selected cells |
-| Single cell selected + Multiple cells copied | Paste from starting point (overwrite) |
-| Multiple cells selected + Same size copied | Paste as is |
-| Multiple cells selected + Different size copied | Show error |
+| Clipboard + Selection | Behavior |
+|-----------------------|----------|
+| Single cell copied + Multiple cells selected | Apply to all selected cells |
+| Multiple cells copied + Single cell selected | Paste from starting point (overwrite) |
+| Copied same size + Multiple cells selected | Paste as is |
+| Copied different size + Multiple cells selected | Show error |
 
 ### Row/Column Paste (Ctrl+V)
 
-| Scenario | Behavior |
-|----------|----------|
-| Multiple rows/columns selected + Single row/column copied | Apply to all selected |
-| Single row/column selected + Multiple rows/columns copied | Paste from starting point (overwrite) |
-| Multiple rows/columns selected + Same size copied | Paste as is |
-| Multiple rows/columns selected + Different size copied | Show error |
+| Clipboard + Selection | Behavior |
+|-----------------------|----------|
+| Single row/column copied + Multiple rows/columns selected | Apply to all selected |
+| Multiple rows/columns copied + Single row/column selected | Paste from starting point (overwrite) |
+| Copied same size + Multiple rows/columns selected | Paste as is |
+| Copied different size + Multiple rows/columns selected | Show error |
 
 ## Context Menu (Right-click)
 
@@ -95,17 +101,6 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 ## Requirements
 
 - VS Code 1.85.0 or later
-
-## Installation
-
-### From Marketplace
-
-Search for "Visual Table Canvas for Markdown" in VS Code Extensions.
-
-### From VSIX
-
-1. Download the `.vsix` file
-2. Run `code --install-extension visual-table-canvas-for-markdown-x.x.x.vsix`
 
 ## Development
 
