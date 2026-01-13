@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-01-13
+
+### Added
+
+- Shift+Enter inserts `<br>` in edit mode (same as Alt+Enter)
+- Shift+Click on row/column headers extends selection range
+- Redo functionality (Ctrl+Y)
+
+### Fixed
+
+- Status bar being cut off at the bottom of the screen
+
 ## [0.1.0] - 2026-01-13
 
 ### Added

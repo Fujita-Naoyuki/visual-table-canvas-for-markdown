@@ -239,11 +239,17 @@ export class TableEditorPanel {
             background-color: var(--vscode-editor-background);
             padding: 10px;
             margin: 0;
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         .table-container {
+            flex: 1;
             overflow: auto;
             max-width: 100%;
-            max-height: calc(100vh - 60px);
+            min-height: 0;
         }
         table {
             border-collapse: collapse;
@@ -385,6 +391,7 @@ export class TableEditorPanel {
             background-color: var(--vscode-statusBar-background);
             color: var(--vscode-statusBar-foreground);
             font-size: 12px;
+            flex-shrink: 0;
         }
         .save-btn {
             padding: 4px 12px;
@@ -541,8 +548,9 @@ export class TableEditorPanel {
             type: 'cell' // 'cell', 'row', 'column'
         };
         
-        // Undo stack
+        // Undo/Redo stacks
         const undoStack = [];
+        const redoStack = [];
         const MAX_UNDO_STACK = 50;
         
         function saveUndoState() {
@@ -552,6 +560,8 @@ export class TableEditorPanel {
             if (undoStack.length > MAX_UNDO_STACK) {
                 undoStack.shift();
             }
+            // Clear redo stack on new change
+            redoStack.length = 0;
         }
         
         function undo() {
@@ -559,10 +569,25 @@ export class TableEditorPanel {
                 updateStatus('Nothing to undo');
                 return;
             }
+            // Save current state to redo stack
+            redoStack.push(tableData.map(row => [...row]));
             tableData = undoStack.pop();
             notifyChange();
             renderTable();
             updateStatus('Undo');
+        }
+        
+        function redo() {
+            if (redoStack.length === 0) {
+                updateStatus('Nothing to redo');
+                return;
+            }
+            // Save current state to undo stack
+            undoStack.push(tableData.map(row => [...row]));
+            tableData = redoStack.pop();
+            notifyChange();
+            renderTable();
+            updateStatus('Redo');
         }
         
         // Notify extension that webview is ready
@@ -725,12 +750,19 @@ export class TableEditorPanel {
             const columnCount = tableData[0]?.length || 0;
             
             isDragging = true;
-            selection = {
-                startRow: row, startCol: 0,
-                endRow: row, endCol: columnCount - 1,
-                activeRow: row, activeCol: 0,
-                type: 'row'
-            };
+            
+            // Shift+Click: extend selection from current row to clicked row
+            if (event.shiftKey && selection.type === 'row' && selection.startRow >= 0) {
+                selection.endRow = row;
+                selection.activeRow = row;
+            } else {
+                selection = {
+                    startRow: row, startCol: 0,
+                    endRow: row, endCol: columnCount - 1,
+                    activeRow: row, activeCol: 0,
+                    type: 'row'
+                };
+            }
             updateSelectionDisplay();
             event.preventDefault();
         }
@@ -755,12 +787,19 @@ export class TableEditorPanel {
             const rowCount = tableData.length;
             
             isDragging = true;
-            selection = {
-                startRow: 0, startCol: col,
-                endRow: rowCount - 1, endCol: col,
-                activeRow: 0, activeCol: col,
-                type: 'column'
-            };
+            
+            // Shift+Click: extend selection from current column to clicked column
+            if (event.shiftKey && selection.type === 'column' && selection.startCol >= 0) {
+                selection.endCol = col;
+                selection.activeCol = col;
+            } else {
+                selection = {
+                    startRow: 0, startCol: col,
+                    endRow: rowCount - 1, endCol: col,
+                    activeRow: 0, activeCol: col,
+                    type: 'column'
+                };
+            }
             updateSelectionDisplay();
             event.preventDefault();
         }
@@ -965,14 +1004,14 @@ export class TableEditorPanel {
             });
             textarea.addEventListener('input', () => autoResizeTextarea(textarea));
             textarea.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && e.altKey) {
-                    // Alt+Enter: insert <br>
+                if (e.key === 'Enter' && (e.altKey || e.shiftKey)) {
+                    // Alt+Enter or Shift+Enter: insert <br>
                     e.preventDefault();
                     const start = textarea.selectionStart;
                     const end = textarea.selectionEnd;
                     textarea.value = textarea.value.substring(0, start) + '<br>' + textarea.value.substring(end);
                     textarea.selectionStart = textarea.selectionEnd = start + 4;
-                } else if (e.key === 'Enter' && !e.altKey) {
+                } else if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
                     e.preventDefault();
                     finishEditing(cell, textarea.value);
                 } else if (e.key === 'Escape') {
@@ -1001,7 +1040,7 @@ export class TableEditorPanel {
                 handlePasteAsLink(textarea, e);
             });
             
-            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' | Alt+Enter→br · Ctrl+B→Bold · Ctrl+I→Italic · Ctrl+5→Strike · Ctrl+Shift+C→Code');
+            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' | Alt/Shift+Enter→br · Ctrl+B→Bold · Ctrl+I→Italic · Ctrl+5→Strike · Ctrl+Shift+C→Code');
         }
         
         function autoResizeTextarea(textarea) {
@@ -1035,14 +1074,14 @@ export class TableEditorPanel {
             });
             textarea.addEventListener('input', () => autoResizeTextarea(textarea));
             textarea.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && e.altKey) {
-                    // Alt+Enter: insert <br>
+                if (e.key === 'Enter' && (e.altKey || e.shiftKey)) {
+                    // Alt+Enter or Shift+Enter: insert <br>
                     e.preventDefault();
                     const start = textarea.selectionStart;
                     const end = textarea.selectionEnd;
                     textarea.value = textarea.value.substring(0, start) + '<br>' + textarea.value.substring(end);
                     textarea.selectionStart = textarea.selectionEnd = start + 4;
-                } else if (e.key === 'Enter' && !e.altKey) {
+                } else if (e.key === 'Enter' && !e.altKey && !e.shiftKey) {
                     e.preventDefault();
                     finishEditing(cell, textarea.value);
                 } else if (e.key === 'Escape') {
@@ -1071,7 +1110,7 @@ export class TableEditorPanel {
                 handlePasteAsLink(textarea, e);
             });
             
-            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' | Alt+Enter→br · Ctrl+B→Bold · Ctrl+I→Italic · Ctrl+5→Strike · Ctrl+Shift+C→Code');
+            updateStatus('Editing: ' + getColumnName(col) + (row + 1) + ' | Alt/Shift+Enter→br · Ctrl+B→Bold · Ctrl+I→Italic · Ctrl+5→Strike · Ctrl+Shift+C→Code');
         }
         
         function finishEditing(cell, newValue) {
@@ -1211,6 +1250,13 @@ export class TableEditorPanel {
             // Ctrl+Z: Undo
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 undo();
+                e.preventDefault();
+                return;
+            }
+            
+            // Ctrl+Y: Redo
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                redo();
                 e.preventDefault();
                 return;
             }
