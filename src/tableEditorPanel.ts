@@ -259,14 +259,14 @@ export class TableEditorPanel {
             overflow-wrap: break-word;
         }
         th {
-            background-color: var(--vscode-editor-lineHighlightBackground);
+            background-color: var(--vscode-editor-background);
             font-weight: normal;
             position: sticky;
             top: 0;
             z-index: 1;
         }
         .row-header {
-            background-color: var(--vscode-editor-lineHighlightBackground);
+            background-color: var(--vscode-editor-background);
             text-align: center;
             min-width: 40px;
             position: sticky;
@@ -288,7 +288,7 @@ export class TableEditorPanel {
             top: 0;
             left: 0;
             z-index: 2;
-            background-color: var(--vscode-editor-lineHighlightBackground);
+            background-color: var(--vscode-editor-background);
         }
         .cell {
             cursor: cell;
@@ -843,6 +843,42 @@ export class TableEditorPanel {
                 type: 'cell'
             };
             updateSelectionDisplay();
+            // Scroll the selected cell into view (custom implementation to avoid sticky header issues)
+            scrollCellIntoView(row, col);
+        }
+        
+        function scrollCellIntoView(row, col) {
+            const container = document.querySelector('.table-container');
+            const cell = document.querySelector('.cell[data-row="' + row + '"][data-col="' + col + '"]');
+            if (!container || !cell) return;
+            
+            const containerRect = container.getBoundingClientRect();
+            const cellRect = cell.getBoundingClientRect();
+            
+            // Get sticky header sizes
+            const headerRow = document.querySelector('#table-header th');
+            const rowHeader = document.querySelector('.row-header');
+            const headerHeight = headerRow ? headerRow.offsetHeight : 0;
+            const headerWidth = rowHeader ? rowHeader.offsetWidth : 0;
+            
+            // Calculate visible area (excluding sticky headers)
+            const visibleTop = containerRect.top + headerHeight;
+            const visibleLeft = containerRect.left + headerWidth;
+            const visibleBottom = containerRect.bottom;
+            const visibleRight = containerRect.right;
+            
+            // Check if cell is outside visible area and scroll if needed
+            if (cellRect.top < visibleTop) {
+                container.scrollTop -= (visibleTop - cellRect.top);
+            } else if (cellRect.bottom > visibleBottom) {
+                container.scrollTop += (cellRect.bottom - visibleBottom);
+            }
+            
+            if (cellRect.left < visibleLeft) {
+                container.scrollLeft -= (visibleLeft - cellRect.left);
+            } else if (cellRect.right > visibleRight) {
+                container.scrollLeft += (cellRect.right - visibleRight);
+            }
         }
         
         // Toggle markdown formatting on selected text
@@ -1472,6 +1508,15 @@ export class TableEditorPanel {
             menu.style.left = x + 'px';
             menu.style.top = y + 'px';
             menu.classList.add('visible');
+            
+            // Adjust position if menu extends beyond viewport
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                menu.style.left = (window.innerWidth - rect.width - 5) + 'px';
+            }
+            if (rect.bottom > window.innerHeight) {
+                menu.style.top = (window.innerHeight - rect.height - 5) + 'px';
+            }
             
             menu.querySelectorAll('.context-menu-item:not(.disabled)').forEach(menuItem => {
                 menuItem.addEventListener('click', (e) => {

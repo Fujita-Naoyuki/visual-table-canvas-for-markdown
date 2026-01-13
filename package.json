@@ -2,7 +2,7 @@
   "name": "visual-table-canvas-for-markdown",
   "displayName": "Visual Table Canvas for Markdown",
   "description": "Edit Markdown tables with an Excel-like UI",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "nf-software",
   "license": "MIT",
   "repository": {
