@@ -239,11 +239,17 @@ export class TableEditorPanel {
             background-color: var(--vscode-editor-background);
             padding: 10px;
             margin: 0;
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         .table-container {
+            flex: 1;
             overflow: auto;
             max-width: 100%;
-            max-height: calc(100vh - 60px);
+            min-height: 0;
         }
         table {
             border-collapse: collapse;
@@ -385,6 +391,7 @@ export class TableEditorPanel {
             background-color: var(--vscode-statusBar-background);
             color: var(--vscode-statusBar-foreground);
             font-size: 12px;
+            flex-shrink: 0;
         }
         .save-btn {
             padding: 4px 12px;
