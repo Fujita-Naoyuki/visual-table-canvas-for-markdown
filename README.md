@@ -39,6 +39,8 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 | Ctrl+Y | Redo |
 | Ctrl+C | Copy |
 | Ctrl+V | Paste |
+| **Ctrl++** | Insert row(s) above / column(s) left (header selected) |
+| **Ctrl+-** | Delete selected row(s) / column(s) (header selected) |
 | F2 / Double-click | Start editing cell |
 
 ### Mouse Operations
