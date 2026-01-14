@@ -960,11 +960,13 @@ export class TableEditorPanel {
                 }
             }
             
-            // Calculate visible area (excluding sticky headers)
+            // Calculate visible area (excluding sticky headers and scrollbars)
+            const scrollbarHeight = container.offsetHeight - container.clientHeight;
+            const scrollbarWidth = container.offsetWidth - container.clientWidth;
             const visibleTop = containerRect.top + headerHeight;
             const visibleLeft = containerRect.left + headerWidth;
-            const visibleBottom = containerRect.bottom;
-            const visibleRight = containerRect.right;
+            const visibleBottom = containerRect.bottom - scrollbarHeight;
+            const visibleRight = containerRect.right - scrollbarWidth;
             
             // Check if cell is outside visible area and scroll if needed
             if (cellRect.top < visibleTop) {
