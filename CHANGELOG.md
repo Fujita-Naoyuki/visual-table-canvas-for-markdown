@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-01-15
+
+### Added
+
+- Ctrl++ shortcut to insert row(s) above / column(s) left (when header selected)
+- Ctrl+- shortcut to delete selected row(s) / column(s) (when header selected)
+
+### Fixed
+
+- Cells at bottom row overlapping with horizontal scrollbar when navigating with arrow keys
+
 ## [0.4.0] - 2026-01-14
 
 ### Added
