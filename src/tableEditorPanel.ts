@@ -960,11 +960,13 @@ export class TableEditorPanel {
                 }
             }
             
-            // Calculate visible area (excluding sticky headers)
+            // Calculate visible area (excluding sticky headers and scrollbars)
+            const scrollbarHeight = container.offsetHeight - container.clientHeight;
+            const scrollbarWidth = container.offsetWidth - container.clientWidth;
             const visibleTop = containerRect.top + headerHeight;
             const visibleLeft = containerRect.left + headerWidth;
-            const visibleBottom = containerRect.bottom;
-            const visibleRight = containerRect.right;
+            const visibleBottom = containerRect.bottom - scrollbarHeight;
+            const visibleRight = containerRect.right - scrollbarWidth;
             
             // Check if cell is outside visible area and scroll if needed
             if (cellRect.top < visibleTop) {
@@ -1517,6 +1519,105 @@ export class TableEditorPanel {
         
         document.addEventListener('keydown', (e) => {
             if (isEditing) return;
+            
+            // Calculate selection bounds for row/column operations
+            const minRow = Math.min(selection.startRow, selection.endRow);
+            const maxRow = Math.max(selection.startRow, selection.endRow);
+            const minCol = Math.min(selection.startCol, selection.endCol);
+            const maxCol = Math.max(selection.startCol, selection.endCol);
+            
+            // Ctrl++: Insert rows/columns
+            if ((e.ctrlKey || e.metaKey) && e.key === '+') {
+                if (selection.type === 'row') {
+                    // Insert rows above selection
+                    const count = maxRow - minRow + 1;
+                    saveUndoState();
+                    for (let i = 0; i < count; i++) {
+                        const newRow = new Array(tableData[0].length).fill('');
+                        tableData.splice(minRow, 0, newRow);
+                    }
+                    notifyChange();
+                    renderTable();
+                    // Maintain row selection on inserted rows for repeated operations
+                    selection = {
+                        startRow: minRow, startCol: 0,
+                        endRow: minRow + count - 1, endCol: tableData[0].length - 1,
+                        activeRow: minRow, activeCol: 0,
+                        type: 'row'
+                    };
+                    updateSelectionDisplay();
+                    updateStatus('Inserted ' + count + ' row(s)');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return;
+                }
+                if (selection.type === 'column') {
+                    // Insert columns to the left of selection
+                    const count = maxCol - minCol + 1;
+                    saveUndoState();
+                    for (let r = 0; r < tableData.length; r++) {
+                        for (let i = 0; i < count; i++) {
+                            tableData[r].splice(minCol, 0, '');
+                        }
+                    }
+                    notifyChange();
+                    renderTable();
+                    // Maintain column selection on inserted columns for repeated operations
+                    selection = {
+                        startRow: 0, startCol: minCol,
+                        endRow: tableData.length - 1, endCol: minCol + count - 1,
+                        activeRow: 0, activeCol: minCol,
+                        type: 'column'
+                    };
+                    updateSelectionDisplay();
+                    updateStatus('Inserted ' + count + ' column(s)');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return;
+                }
+            }
+            
+            // Ctrl+-: Delete rows/columns
+            if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+                if (selection.type === 'row' && tableData.length > 1) {
+                    // Delete selected rows
+                    const count = maxRow - minRow + 1;
+                    if (count >= tableData.length) {
+                        updateStatus('Cannot delete all rows');
+                        e.preventDefault();
+                        return;
+                    }
+                    saveUndoState();
+                    tableData.splice(minRow, count);
+                    notifyChange();
+                    renderTable();
+                    selectSingleCell(Math.min(minRow, tableData.length - 1), 0);
+                    updateStatus('Deleted ' + count + ' row(s)');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return;
+                }
+                if (selection.type === 'column' && tableData[0].length > 1) {
+                    // Delete selected columns
+                    const count = maxCol - minCol + 1;
+                    if (count >= tableData[0].length) {
+                        updateStatus('Cannot delete all columns');
+                        e.preventDefault();
+                        return;
+                    }
+                    saveUndoState();
+                    for (let r = 0; r < tableData.length; r++) {
+                        tableData[r].splice(minCol, count);
+                    }
+                    notifyChange();
+                    renderTable();
+                    selectSingleCell(0, Math.min(minCol, tableData[0].length - 1));
+                    updateStatus('Deleted ' + count + ' column(s)');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return;
+                }
+            }
             
             // Ctrl+Z: Undo
             if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
