@@ -1256,6 +1256,105 @@ export class TableEditorPanel {
             document.getElementById('status-bar').textContent = message;
         }
         
+        // Ctrl+Arrow key jump functions (Excel-like behavior)
+        function findJumpTargetUp(row, col) {
+            if (row === 0) return 0;
+            const currentValue = (tableData[row][col] || '').trim();
+            const nextValue = (tableData[row - 1][col] || '').trim();
+            
+            if (currentValue === '' || nextValue === '') {
+                // Current or next cell is empty: find first non-empty cell going up
+                for (let r = row - 1; r >= 0; r--) {
+                    if ((tableData[r][col] || '').trim() !== '') {
+                        return r;
+                    }
+                }
+                return 0; // All empty, go to top
+            } else {
+                // Both non-empty: find last non-empty cell in consecutive non-empty range
+                for (let r = row - 1; r >= 0; r--) {
+                    if ((tableData[r][col] || '').trim() === '') {
+                        return r + 1;
+                    }
+                }
+                return 0; // All non-empty, go to top
+            }
+        }
+        
+        function findJumpTargetDown(row, col) {
+            const maxRow = tableData.length - 1;
+            if (row === maxRow) return maxRow;
+            const currentValue = (tableData[row][col] || '').trim();
+            const nextValue = (tableData[row + 1][col] || '').trim();
+            
+            if (currentValue === '' || nextValue === '') {
+                // Current or next cell is empty: find first non-empty cell going down
+                for (let r = row + 1; r <= maxRow; r++) {
+                    if ((tableData[r][col] || '').trim() !== '') {
+                        return r;
+                    }
+                }
+                return maxRow; // All empty, go to bottom
+            } else {
+                // Both non-empty: find last non-empty cell in consecutive non-empty range
+                for (let r = row + 1; r <= maxRow; r++) {
+                    if ((tableData[r][col] || '').trim() === '') {
+                        return r - 1;
+                    }
+                }
+                return maxRow; // All non-empty, go to bottom
+            }
+        }
+        
+        function findJumpTargetLeft(row, col) {
+            if (col === 0) return 0;
+            const currentValue = (tableData[row][col] || '').trim();
+            const nextValue = (tableData[row][col - 1] || '').trim();
+            
+            if (currentValue === '' || nextValue === '') {
+                // Current or next cell is empty: find first non-empty cell going left
+                for (let c = col - 1; c >= 0; c--) {
+                    if ((tableData[row][c] || '').trim() !== '') {
+                        return c;
+                    }
+                }
+                return 0; // All empty, go to leftmost
+            } else {
+                // Both non-empty: find last non-empty cell in consecutive non-empty range
+                for (let c = col - 1; c >= 0; c--) {
+                    if ((tableData[row][c] || '').trim() === '') {
+                        return c + 1;
+                    }
+                }
+                return 0; // All non-empty, go to leftmost
+            }
+        }
+        
+        function findJumpTargetRight(row, col) {
+            const maxCol = tableData[0].length - 1;
+            if (col === maxCol) return maxCol;
+            const currentValue = (tableData[row][col] || '').trim();
+            const nextValue = (tableData[row][col + 1] || '').trim();
+            
+            if (currentValue === '' || nextValue === '') {
+                // Current or next cell is empty: find first non-empty cell going right
+                for (let c = col + 1; c <= maxCol; c++) {
+                    if ((tableData[row][c] || '').trim() !== '') {
+                        return c;
+                    }
+                }
+                return maxCol; // All empty, go to rightmost
+            } else {
+                // Both non-empty: find last non-empty cell in consecutive non-empty range
+                for (let c = col + 1; c <= maxCol; c++) {
+                    if ((tableData[row][c] || '').trim() === '') {
+                        return c - 1;
+                    }
+                }
+                return maxCol; // All non-empty, go to rightmost
+            }
+        }
+        
         document.addEventListener('keydown', (e) => {
             // Skip if focus is on an input element
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
@@ -1270,19 +1369,35 @@ export class TableEditorPanel {
             
             switch (e.key) {
                 case 'ArrowUp':
-                    newRow = Math.max(0, row - 1);
+                    if (e.ctrlKey || e.metaKey) {
+                        newRow = findJumpTargetUp(row, col);
+                    } else {
+                        newRow = Math.max(0, row - 1);
+                    }
                     e.preventDefault();
                     break;
                 case 'ArrowDown':
-                    newRow = Math.min(tableData.length - 1, row + 1);
+                    if (e.ctrlKey || e.metaKey) {
+                        newRow = findJumpTargetDown(row, col);
+                    } else {
+                        newRow = Math.min(tableData.length - 1, row + 1);
+                    }
                     e.preventDefault();
                     break;
                 case 'ArrowLeft':
-                    newCol = Math.max(0, col - 1);
+                    if (e.ctrlKey || e.metaKey) {
+                        newCol = findJumpTargetLeft(row, col);
+                    } else {
+                        newCol = Math.max(0, col - 1);
+                    }
                     e.preventDefault();
                     break;
                 case 'ArrowRight':
-                    newCol = Math.min(tableData[0].length - 1, col + 1);
+                    if (e.ctrlKey || e.metaKey) {
+                        newCol = findJumpTargetRight(row, col);
+                    } else {
+                        newCol = Math.min(tableData[0].length - 1, col + 1);
+                    }
                     e.preventDefault();
                     break;
                 case 'Tab':

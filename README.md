@@ -29,6 +29,7 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 | Key | Action |
 |-----|--------|
 | Arrow Keys | Navigate cells |
+| Ctrl+Arrow Keys | Jump to data boundary (Excel-like) |
 | Tab | Move to next cell |
 | Shift+Tab | Move to previous cell |
 | Enter | Move to cell below |
