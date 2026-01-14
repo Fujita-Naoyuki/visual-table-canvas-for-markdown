@@ -296,6 +296,15 @@ export class TableEditorPanel {
             z-index: 2;
             background-color: var(--vscode-editor-background);
         }
+        /* Frozen first row styles */
+        .frozen-row td {
+            position: sticky;
+            background-color: var(--vscode-editor-background);
+            z-index: 1;
+        }
+        .frozen-row .row-header {
+            z-index: 2;
+        }
         .cell {
             cursor: cell;
         }
@@ -385,6 +394,26 @@ export class TableEditorPanel {
         .toolbar-label {
             font-size: 12px;
             color: var(--vscode-foreground);
+        }
+        .toolbar-separator {
+            display: inline-block;
+            width: 1px;
+            height: 16px;
+            background-color: var(--vscode-panel-border);
+            margin: 0 8px;
+            vertical-align: middle;
+        }
+        .toolbar-checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--vscode-foreground);
+            cursor: pointer;
+        }
+        .toolbar-checkbox-label input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
         }
         .status-bar {
             padding: 5px 10px;
@@ -507,6 +536,11 @@ export class TableEditorPanel {
             <span class="toolbar-label">Max:</span>
             <input type="number" class="toolbar-input" id="max-width-input" value="${this._defaultMaxColumnWidth}" min="50" max="1000">
             <span class="toolbar-label">px</span>
+            <span class="toolbar-separator"></span>
+            <label class="toolbar-checkbox-label">
+                <input type="checkbox" id="freeze-first-row-checkbox">
+                <span>Freeze 1st Row</span>
+            </label>
         </div>
         <div class="toolbar-right">
             <button class="save-btn" id="save-btn" disabled>Save & Close</button>
@@ -539,6 +573,7 @@ export class TableEditorPanel {
         let tableData = [];
         let isEditing = false;
         let isDragging = false;
+        let freezeFirstRow = false;
         
         // Selection state
         let selection = {
@@ -628,11 +663,13 @@ export class TableEditorPanel {
             
             let bodyHtml = '';
             for (let row = 0; row < tableData.length; row++) {
-                bodyHtml += '<tr>';
-                bodyHtml += '<td class="row-header" data-row="' + row + '">' + (row + 1) + '</td>';
+                const isFrozenRow = freezeFirstRow && row === 0;
+                bodyHtml += '<tr' + (isFrozenRow ? ' class="frozen-row"' : '') + '>';
+                bodyHtml += '<td class="row-header" data-row="' + row + '"' + (isFrozenRow ? ' style="top: ' + getColumnHeaderHeight() + 'px;"' : '') + '>' + (row + 1) + '</td>';
                 for (let col = 0; col < columnCount; col++) {
                     const value = tableData[row][col] || '';
-                    bodyHtml += '<td class="cell" data-row="' + row + '" data-col="' + col + '">' + renderMarkdown(value) + '</td>';
+                    const frozenStyle = isFrozenRow ? ' style="top: ' + getColumnHeaderHeight() + 'px;"' : '';
+                    bodyHtml += '<td class="cell" data-row="' + row + '" data-col="' + col + '"' + frozenStyle + '>' + renderMarkdown(value) + '</td>';
                 }
                 bodyHtml += '</tr>';
             }
@@ -677,6 +714,11 @@ export class TableEditorPanel {
                 index = Math.floor(index / 26) - 1;
             }
             return name;
+        }
+        
+        function getColumnHeaderHeight() {
+            const headerRow = document.querySelector('#table-header th');
+            return headerRow ? headerRow.offsetHeight : 28;
         }
         
         function escapeHtml(text) {
@@ -907,8 +949,16 @@ export class TableEditorPanel {
             // Get sticky header sizes
             const headerRow = document.querySelector('#table-header th');
             const rowHeader = document.querySelector('.row-header');
-            const headerHeight = headerRow ? headerRow.offsetHeight : 0;
+            let headerHeight = headerRow ? headerRow.offsetHeight : 0;
             const headerWidth = rowHeader ? rowHeader.offsetWidth : 0;
+            
+            // Add frozen row height if enabled
+            if (freezeFirstRow) {
+                const frozenRow = document.querySelector('.frozen-row');
+                if (frozenRow) {
+                    headerHeight += frozenRow.offsetHeight;
+                }
+            }
             
             // Calculate visible area (excluding sticky headers)
             const visibleTop = containerRect.top + headerHeight;
@@ -1256,6 +1306,105 @@ export class TableEditorPanel {
             document.getElementById('status-bar').textContent = message;
         }
         
+        // Ctrl+Arrow key jump functions (Excel-like behavior)
+        function findJumpTargetUp(row, col) {
+            if (row === 0) return 0;
+            const currentValue = (tableData[row][col] || '').trim();
+            const nextValue = (tableData[row - 1][col] || '').trim();
+            
+            if (currentValue === '' || nextValue === '') {
+                // Current or next cell is empty: find first non-empty cell going up
+                for (let r = row - 1; r >= 0; r--) {
+                    if ((tableData[r][col] || '').trim() !== '') {
+                        return r;
+                    }
+                }
+                return 0; // All empty, go to top
+            } else {
+                // Both non-empty: find last non-empty cell in consecutive non-empty range
+                for (let r = row - 1; r >= 0; r--) {
+                    if ((tableData[r][col] || '').trim() === '') {
+                        return r + 1;
+                    }
+                }
+                return 0; // All non-empty, go to top
+            }
+        }
+        
+        function findJumpTargetDown(row, col) {
+            const maxRow = tableData.length - 1;
+            if (row === maxRow) return maxRow;
+            const currentValue = (tableData[row][col] || '').trim();
+            const nextValue = (tableData[row + 1][col] || '').trim();
+            
+            if (currentValue === '' || nextValue === '') {
+                // Current or next cell is empty: find first non-empty cell going down
+                for (let r = row + 1; r <= maxRow; r++) {
+                    if ((tableData[r][col] || '').trim() !== '') {
+                        return r;
+                    }
+                }
+                return maxRow; // All empty, go to bottom
+            } else {
+                // Both non-empty: find last non-empty cell in consecutive non-empty range
+                for (let r = row + 1; r <= maxRow; r++) {
+                    if ((tableData[r][col] || '').trim() === '') {
+                        return r - 1;
+                    }
+                }
+                return maxRow; // All non-empty, go to bottom
+            }
+        }
+        
+        function findJumpTargetLeft(row, col) {
+            if (col === 0) return 0;
+            const currentValue = (tableData[row][col] || '').trim();
+            const nextValue = (tableData[row][col - 1] || '').trim();
+            
+            if (currentValue === '' || nextValue === '') {
+                // Current or next cell is empty: find first non-empty cell going left
+                for (let c = col - 1; c >= 0; c--) {
+                    if ((tableData[row][c] || '').trim() !== '') {
+                        return c;
+                    }
+                }
+                return 0; // All empty, go to leftmost
+            } else {
+                // Both non-empty: find last non-empty cell in consecutive non-empty range
+                for (let c = col - 1; c >= 0; c--) {
+                    if ((tableData[row][c] || '').trim() === '') {
+                        return c + 1;
+                    }
+                }
+                return 0; // All non-empty, go to leftmost
+            }
+        }
+        
+        function findJumpTargetRight(row, col) {
+            const maxCol = tableData[0].length - 1;
+            if (col === maxCol) return maxCol;
+            const currentValue = (tableData[row][col] || '').trim();
+            const nextValue = (tableData[row][col + 1] || '').trim();
+            
+            if (currentValue === '' || nextValue === '') {
+                // Current or next cell is empty: find first non-empty cell going right
+                for (let c = col + 1; c <= maxCol; c++) {
+                    if ((tableData[row][c] || '').trim() !== '') {
+                        return c;
+                    }
+                }
+                return maxCol; // All empty, go to rightmost
+            } else {
+                // Both non-empty: find last non-empty cell in consecutive non-empty range
+                for (let c = col + 1; c <= maxCol; c++) {
+                    if ((tableData[row][c] || '').trim() === '') {
+                        return c - 1;
+                    }
+                }
+                return maxCol; // All non-empty, go to rightmost
+            }
+        }
+        
         document.addEventListener('keydown', (e) => {
             // Skip if focus is on an input element
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
@@ -1270,19 +1419,35 @@ export class TableEditorPanel {
             
             switch (e.key) {
                 case 'ArrowUp':
-                    newRow = Math.max(0, row - 1);
+                    if (e.ctrlKey || e.metaKey) {
+                        newRow = findJumpTargetUp(row, col);
+                    } else {
+                        newRow = Math.max(0, row - 1);
+                    }
                     e.preventDefault();
                     break;
                 case 'ArrowDown':
-                    newRow = Math.min(tableData.length - 1, row + 1);
+                    if (e.ctrlKey || e.metaKey) {
+                        newRow = findJumpTargetDown(row, col);
+                    } else {
+                        newRow = Math.min(tableData.length - 1, row + 1);
+                    }
                     e.preventDefault();
                     break;
                 case 'ArrowLeft':
-                    newCol = Math.max(0, col - 1);
+                    if (e.ctrlKey || e.metaKey) {
+                        newCol = findJumpTargetLeft(row, col);
+                    } else {
+                        newCol = Math.max(0, col - 1);
+                    }
                     e.preventDefault();
                     break;
                 case 'ArrowRight':
-                    newCol = Math.min(tableData[0].length - 1, col + 1);
+                    if (e.ctrlKey || e.metaKey) {
+                        newCol = findJumpTargetRight(row, col);
+                    } else {
+                        newCol = Math.min(tableData[0].length - 1, col + 1);
+                    }
                     e.preventDefault();
                     break;
                 case 'Tab':
@@ -2083,6 +2248,13 @@ export class TableEditorPanel {
         document.getElementById('auto-width-btn').addEventListener('click', () => {
             autoFitColumnWidths();
             updateStatus('Column widths adjusted');
+        });
+        
+        // Freeze First Row checkbox handler
+        document.getElementById('freeze-first-row-checkbox').addEventListener('change', (e) => {
+            freezeFirstRow = e.target.checked;
+            renderTable();
+            updateStatus(freezeFirstRow ? 'First row frozen' : 'First row unfrozen');
         });
     </script>
 </body>
