@@ -296,6 +296,15 @@ export class TableEditorPanel {
             z-index: 2;
             background-color: var(--vscode-editor-background);
         }
+        /* Frozen first row styles */
+        .frozen-row td {
+            position: sticky;
+            background-color: var(--vscode-editor-background);
+            z-index: 1;
+        }
+        .frozen-row .row-header {
+            z-index: 2;
+        }
         .cell {
             cursor: cell;
         }
@@ -385,6 +394,26 @@ export class TableEditorPanel {
         .toolbar-label {
             font-size: 12px;
             color: var(--vscode-foreground);
+        }
+        .toolbar-separator {
+            display: inline-block;
+            width: 1px;
+            height: 16px;
+            background-color: var(--vscode-panel-border);
+            margin: 0 8px;
+            vertical-align: middle;
+        }
+        .toolbar-checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--vscode-foreground);
+            cursor: pointer;
+        }
+        .toolbar-checkbox-label input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
         }
         .status-bar {
             padding: 5px 10px;
@@ -507,6 +536,11 @@ export class TableEditorPanel {
             <span class="toolbar-label">Max:</span>
             <input type="number" class="toolbar-input" id="max-width-input" value="${this._defaultMaxColumnWidth}" min="50" max="1000">
             <span class="toolbar-label">px</span>
+            <span class="toolbar-separator"></span>
+            <label class="toolbar-checkbox-label">
+                <input type="checkbox" id="freeze-first-row-checkbox">
+                <span>Freeze 1st Row</span>
+            </label>
         </div>
         <div class="toolbar-right">
             <button class="save-btn" id="save-btn" disabled>Save & Close</button>
@@ -539,6 +573,7 @@ export class TableEditorPanel {
         let tableData = [];
         let isEditing = false;
         let isDragging = false;
+        let freezeFirstRow = false;
         
         // Selection state
         let selection = {
@@ -628,11 +663,13 @@ export class TableEditorPanel {
             
             let bodyHtml = '';
             for (let row = 0; row < tableData.length; row++) {
-                bodyHtml += '<tr>';
-                bodyHtml += '<td class="row-header" data-row="' + row + '">' + (row + 1) + '</td>';
+                const isFrozenRow = freezeFirstRow && row === 0;
+                bodyHtml += '<tr' + (isFrozenRow ? ' class="frozen-row"' : '') + '>';
+                bodyHtml += '<td class="row-header" data-row="' + row + '"' + (isFrozenRow ? ' style="top: ' + getColumnHeaderHeight() + 'px;"' : '') + '>' + (row + 1) + '</td>';
                 for (let col = 0; col < columnCount; col++) {
                     const value = tableData[row][col] || '';
-                    bodyHtml += '<td class="cell" data-row="' + row + '" data-col="' + col + '">' + renderMarkdown(value) + '</td>';
+                    const frozenStyle = isFrozenRow ? ' style="top: ' + getColumnHeaderHeight() + 'px;"' : '';
+                    bodyHtml += '<td class="cell" data-row="' + row + '" data-col="' + col + '"' + frozenStyle + '>' + renderMarkdown(value) + '</td>';
                 }
                 bodyHtml += '</tr>';
             }
@@ -677,6 +714,11 @@ export class TableEditorPanel {
                 index = Math.floor(index / 26) - 1;
             }
             return name;
+        }
+        
+        function getColumnHeaderHeight() {
+            const headerRow = document.querySelector('#table-header th');
+            return headerRow ? headerRow.offsetHeight : 28;
         }
         
         function escapeHtml(text) {
@@ -907,8 +949,16 @@ export class TableEditorPanel {
             // Get sticky header sizes
             const headerRow = document.querySelector('#table-header th');
             const rowHeader = document.querySelector('.row-header');
-            const headerHeight = headerRow ? headerRow.offsetHeight : 0;
+            let headerHeight = headerRow ? headerRow.offsetHeight : 0;
             const headerWidth = rowHeader ? rowHeader.offsetWidth : 0;
+            
+            // Add frozen row height if enabled
+            if (freezeFirstRow) {
+                const frozenRow = document.querySelector('.frozen-row');
+                if (frozenRow) {
+                    headerHeight += frozenRow.offsetHeight;
+                }
+            }
             
             // Calculate visible area (excluding sticky headers)
             const visibleTop = containerRect.top + headerHeight;
@@ -2198,6 +2248,13 @@ export class TableEditorPanel {
         document.getElementById('auto-width-btn').addEventListener('click', () => {
             autoFitColumnWidths();
             updateStatus('Column widths adjusted');
+        });
+        
+        // Freeze First Row checkbox handler
+        document.getElementById('freeze-first-row-checkbox').addEventListener('change', (e) => {
+            freezeFirstRow = e.target.checked;
+            renderTable();
+            updateStatus(freezeFirstRow ? 'First row frozen' : 'First row unfrozen');
         });
     </script>
 </body>
