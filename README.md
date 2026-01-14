@@ -7,9 +7,10 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 ## Features
 
 - **Visual Table Editor**: Edit Markdown tables in a spreadsheet-like interface
-- **Excel-like Operations**: Cell selection, copy/paste, undo (Ctrl+Z)
-- **Keyboard Navigation**: Arrow keys, Tab, Enter, Delete
-- **Row/Column Management**: Right-click to add, delete, copy rows and columns
+- **Excel-like Operations**: Cell selection, copy/paste, undo/redo
+- **Excel/Spreadsheet Integration**: Copy to/from Excel, Google Sheets (TSV format)
+- **Keyboard Navigation**: Arrow keys, Tab, Enter
+- **Row/Column Management**: Right-click to insert, delete, or insert copied rows/columns
 - **Markdown Formatting**: Bold, italic, strikethrough, code, links are rendered
 - **Auto Column Width**: Automatic column width adjustment with configurable max width
 - **Split or Same Tab**: Open editor beside or in the same tab (configurable)
@@ -38,6 +39,13 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 | Ctrl+V | Paste |
 | F2 / Double-click | Start editing cell |
 
+### Mouse Operations
+
+| Action | Result |
+|--------|--------|
+| Shift+Click (cell) | Extend selection to clicked cell |
+| Shift+Click (row/column header) | Extend selection to clicked row/column |
+
 ### Edit Mode
 
 | Key | Action |
@@ -53,6 +61,12 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 
 
 ## Copy & Paste Behavior
+
+### Excel/Spreadsheet Integration
+
+- **Copy cells to Excel**: Select cells → Ctrl+C → Paste in Excel/Google Sheets
+- **Paste from Excel**: Copy cells in Excel/Google Sheets → Select cell → Ctrl+V
+- **Line breaks**: `<br>` tags are converted to actual line breaks in Excel, and vice versa
 
 ### Cell Paste (Ctrl+V)
 
