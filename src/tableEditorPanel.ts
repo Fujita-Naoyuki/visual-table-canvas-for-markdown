@@ -2512,7 +2512,25 @@ export class TableEditorPanel {
             document.getElementById('context-menu').classList.remove('visible');
         }
         
+        let dialogCallback = null;
+        
         document.addEventListener('click', hideContextMenu);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const menu = document.getElementById('context-menu');
+                const dialogOverlay = document.getElementById('dialog-overlay');
+                if (menu.classList.contains('visible')) {
+                    hideContextMenu();
+                    e.preventDefault();
+                    e.stopPropagation();
+                } else if (dialogOverlay.classList.contains('visible')) {
+                    dialogOverlay.classList.remove('visible');
+                    dialogCallback = null;
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }
+        });
         
         function showContextMenu(x, y, items) {
             const menu = document.getElementById('context-menu');
@@ -2729,8 +2747,6 @@ export class TableEditorPanel {
                     break;
             }
         }
-        
-        let dialogCallback = null;
         
         function showInsertDialog(title, type, maxCount, callback) {
             const overlay = document.getElementById('dialog-overlay');
