@@ -2,7 +2,11 @@
 
 Edit Markdown tables with an Excel-like UI in VS Code.
 
-![Demo](./media/demo.gif)
+### Basic Editing
+![Demo-main](./media/01-demo-main.gif)
+
+### Advanced Features
+![Demo-detail](./media/02-demo-detail.gif)
 
 ## Features
 
