@@ -14,6 +14,7 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 - **Markdown Formatting**: Bold, italic, strikethrough, code, links are rendered
 - **Auto Column Width**: Automatic column width adjustment with configurable max width
 - **Freeze First Row**: Pin the first data row as a sticky header (toolbar checkbox)
+- **Find and Replace**: VS Code-like find and replace within the table editor
 - **Split or Same Tab**: Open editor beside or in the same tab (configurable)
 
 ## Usage
@@ -39,8 +40,10 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 | Ctrl+Y | Redo |
 | Ctrl+C | Copy |
 | Ctrl+V | Paste |
-| **Ctrl++** | Insert row(s) above / column(s) left (header selected) |
-| **Ctrl+-** | Delete selected row(s) / column(s) (header selected) |
+| Ctrl+F | Open find dialog |
+| Ctrl+H | Open find and replace dialog |
+| Ctrl++ | Insert row(s) above / column(s) left (header selected) |
+| Ctrl+- | Delete selected row(s) / column(s) (header selected) |
 | F2 / Double-click | Start editing cell |
 
 ### Mouse Operations
