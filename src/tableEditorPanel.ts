@@ -527,6 +527,151 @@ export class TableEditorPanel {
             background-color: var(--vscode-button-secondaryBackground);
             color: var(--vscode-button-secondaryForeground);
         }
+        /* Find/Replace Dialog Styles */
+        .find-replace-dialog {
+            position: fixed;
+            top: 50px;
+            right: 20px;
+            background: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-panel-border);
+            padding: 8px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border-radius: 4px;
+            min-width: 400px;
+        }
+        .find-replace-dialog.hidden { display: none; }
+        .find-replace-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 4px;
+        }
+        .expand-btn {
+            width: 20px;
+            height: 24px;
+            padding: 0;
+            background: transparent;
+            border: none;
+            color: var(--vscode-foreground);
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 4px;
+        }
+        .expand-btn:hover {
+            background: var(--vscode-toolbar-hoverBackground);
+        }
+        .find-replace-fields {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .find-replace-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .input-with-options {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        .input-with-options .find-input {
+            flex: 1;
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border, transparent);
+            padding: 4px 8px;
+            padding-right: 30px;
+            font-size: var(--vscode-font-size);
+            font-family: var(--vscode-font-family);
+            border-radius: 2px;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .input-with-options .find-input:focus {
+            border-color: var(--vscode-focusBorder);
+        }
+        .input-with-options .find-input::placeholder {
+            color: var(--vscode-input-placeholderForeground);
+        }
+        .input-options {
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 2px;
+        }
+        .option-btn {
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--vscode-descriptionForeground);
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .option-btn:hover {
+            background: var(--vscode-toolbar-hoverBackground);
+        }
+        .option-btn.active {
+            color: var(--vscode-foreground);
+            background: var(--vscode-toolbar-activeBackground, rgba(255,255,255,0.1));
+            border-color: var(--vscode-focusBorder);
+        }
+        .find-replace-row .icon-btn {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            background: transparent;
+            border: none;
+            color: var(--vscode-foreground);
+            cursor: pointer;
+            font-size: 18px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .find-replace-row .icon-btn:hover {
+            background: var(--vscode-toolbar-hoverBackground);
+        }
+        .find-count {
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground);
+            min-width: 60px;
+            text-align: center;
+        }
+        .replace-row.hidden { display: none; }
+        .replace-actions {
+            display: flex;
+            gap: 2px;
+        }
+        .replace-actions .icon-btn {
+            width: 28px;
+            height: 28px;
+            font-size: 18px;
+        }
+        .cell.find-highlight {
+            background-color: var(--vscode-editor-findMatchHighlightBackground, rgba(234, 92, 0, 0.33)) !important;
+        }
+        .cell.find-current {
+            background-color: var(--vscode-editor-findMatchBackground, rgba(81, 92, 106, 0.7)) !important;
+            outline: 2px solid var(--vscode-editor-findMatchBorder, #515c6a);
+        }
     </style>
 </head>
 <body>
@@ -554,6 +699,35 @@ export class TableEditorPanel {
     </div>
     <div class="status-bar" id="status-bar">Loading...</div>
     <div class="context-menu" id="context-menu"></div>
+    <!-- Find/Replace Dialog -->
+    <div id="find-replace-dialog" class="find-replace-dialog hidden">
+        <div class="find-replace-container">
+            <button class="expand-btn" id="expand-btn" title="Toggle Replace">▶</button>
+            <div class="find-replace-fields">
+                <div class="find-replace-row">
+                    <div class="input-with-options">
+                        <input type="text" class="find-input" id="find-input" placeholder="Find">
+                        <div class="input-options">
+                            <button class="option-btn" id="case-sensitive-btn" title="Match Case (Alt+C)">Aa</button>
+                        </div>
+                    </div>
+                    <span class="find-count" id="find-count">No results</span>
+                    <button class="icon-btn" id="find-prev" title="Previous Match (Shift+Enter)">↑</button>
+                    <button class="icon-btn" id="find-next" title="Next Match (Enter)">↓</button>
+                    <button class="icon-btn" id="find-close" title="Close (Escape)">×</button>
+                </div>
+                <div class="find-replace-row replace-row hidden" id="replace-row">
+                    <div class="input-with-options">
+                        <input type="text" class="find-input" id="replace-input" placeholder="Replace">
+                    </div>
+                    <div class="replace-actions">
+                        <button class="icon-btn" id="replace-one" title="Replace (Enter)">⎘</button>
+                        <button class="icon-btn" id="replace-all" title="Replace All (Ctrl+Alt+Enter)">⎗</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="dialog-overlay" id="dialog-overlay">
         <div class="dialog">
             <div class="dialog-title" id="dialog-title"></div>
@@ -624,6 +798,310 @@ export class TableEditorPanel {
             renderTable();
             updateStatus('Redo');
         }
+        
+        // ========== Find/Replace State and Functions ==========
+        let findReplaceState = {
+            isOpen: false,
+            isReplaceMode: false,
+            query: '',
+            caseSensitive: false,
+            matches: [],      // [{row, col}, ...]
+            currentIndex: -1
+        };
+        
+        function openFindDialog(replaceMode) {
+            const dialog = document.getElementById('find-replace-dialog');
+            const replaceRow = document.getElementById('replace-row');
+            const findInput = document.getElementById('find-input');
+            const expandBtn = document.getElementById('expand-btn');
+            
+            findReplaceState.isOpen = true;
+            findReplaceState.isReplaceMode = replaceMode;
+            
+            dialog.classList.remove('hidden');
+            if (replaceMode) {
+                replaceRow.classList.remove('hidden');
+                expandBtn.textContent = '\u25bc'; // ▼
+            } else {
+                replaceRow.classList.add('hidden');
+                expandBtn.textContent = '\u25b6'; // ▶
+            }
+            
+            // Focus the find input
+            setTimeout(() => {
+                findInput.focus();
+                findInput.select();
+            }, 50);
+        }
+        
+        function closeFindDialog() {
+            const dialog = document.getElementById('find-replace-dialog');
+            dialog.classList.add('hidden');
+            findReplaceState.isOpen = false;
+            findReplaceState.matches = [];
+            findReplaceState.currentIndex = -1;
+            clearFindHighlights();
+            document.getElementById('table-container').focus();
+        }
+        
+        function performSearch() {
+            const findInput = document.getElementById('find-input');
+            const query = findInput.value || '';
+            findReplaceState.query = query;
+            findReplaceState.matches = [];
+            findReplaceState.currentIndex = -1;
+            
+            if (!query) {
+                clearFindHighlights();
+                updateFindCount();
+                return;
+            }
+            
+            const caseSensitive = findReplaceState.caseSensitive;
+            
+            for (let r = 0; r < tableData.length; r++) {
+                for (let c = 0; c < tableData[r].length; c++) {
+                    const cellValue = tableData[r][c] || '';
+                    const searchValue = caseSensitive ? cellValue : cellValue.toLowerCase();
+                    const searchQuery = caseSensitive ? query : query.toLowerCase();
+                    if (searchValue.includes(searchQuery)) {
+                        findReplaceState.matches.push({row: r, col: c});
+                    }
+                }
+            }
+            
+            if (findReplaceState.matches.length > 0) {
+                findReplaceState.currentIndex = 0;
+            }
+            
+            updateFindHighlights();
+            updateFindCount();
+        }
+        
+        function clearFindHighlights() {
+            document.querySelectorAll('.cell.find-highlight, .cell.find-current').forEach(cell => {
+                cell.classList.remove('find-highlight', 'find-current');
+            });
+        }
+        
+        function updateFindHighlights() {
+            clearFindHighlights();
+            
+            // Don't apply highlights if dialog is closed
+            if (!findReplaceState.isOpen) return;
+            
+            findReplaceState.matches.forEach((match, index) => {
+                const cell = document.querySelector('.cell[data-row=\"' + match.row + '\"][data-col=\"' + match.col + '\"]');
+                if (cell) {
+                    cell.classList.add('find-highlight');
+                    if (index === findReplaceState.currentIndex) {
+                        cell.classList.remove('find-highlight');
+                        cell.classList.add('find-current');
+                    }
+                }
+            });
+            
+            // Scroll to current match
+            if (findReplaceState.currentIndex >= 0) {
+                const match = findReplaceState.matches[findReplaceState.currentIndex];
+                const cell = document.querySelector('.cell[data-row=\"' + match.row + '\"][data-col=\"' + match.col + '\"]');
+                if (cell) {
+                    cell.scrollIntoView({block: 'center', inline: 'center', behavior: 'smooth'});
+                }
+            }
+        }
+        
+        function updateFindCount() {
+            const countEl = document.getElementById('find-count');
+            if (findReplaceState.matches.length === 0) {
+                countEl.textContent = 'No results';
+            } else {
+                countEl.textContent = (findReplaceState.currentIndex + 1) + ' of ' + findReplaceState.matches.length;
+            }
+        }
+        
+        function findNext() {
+            if (findReplaceState.matches.length === 0) return;
+            findReplaceState.currentIndex = (findReplaceState.currentIndex + 1) % findReplaceState.matches.length;
+            updateFindHighlights();
+            updateFindCount();
+        }
+        
+        function findPrev() {
+            if (findReplaceState.matches.length === 0) return;
+            findReplaceState.currentIndex = (findReplaceState.currentIndex - 1 + findReplaceState.matches.length) % findReplaceState.matches.length;
+            updateFindHighlights();
+            updateFindCount();
+        }
+        
+        function replaceOne() {
+            if (findReplaceState.matches.length === 0 || findReplaceState.currentIndex < 0) {
+                updateStatus('No match to replace');
+                return;
+            }
+            
+            const match = findReplaceState.matches[findReplaceState.currentIndex];
+            const replaceInput = document.getElementById('replace-input');
+            const replaceValue = replaceInput.value || '';
+            const query = findReplaceState.query;
+            const caseSensitive = findReplaceState.caseSensitive;
+            
+            saveUndoState();
+            
+            let cellValue = tableData[match.row][match.col] || '';
+            if (caseSensitive) {
+                // Case-sensitive: simple string replace
+                cellValue = cellValue.replace(query, replaceValue);
+            } else {
+                // Case-insensitive: find the position and replace preserving original case
+                const lowerCell = cellValue.toLowerCase();
+                const lowerQuery = query.toLowerCase();
+                const pos = lowerCell.indexOf(lowerQuery);
+                if (pos >= 0) {
+                    cellValue = cellValue.substring(0, pos) + replaceValue + cellValue.substring(pos + query.length);
+                }
+            }
+            tableData[match.row][match.col] = cellValue;
+            
+            notifyChange();
+            renderTable();
+            performSearch();
+            updateStatus('Replaced 1 occurrence');
+        }
+        
+        function replaceAll() {
+            if (findReplaceState.matches.length === 0) {
+                updateStatus('No matches to replace');
+                return;
+            }
+            
+            const replaceInput = document.getElementById('replace-input');
+            const replaceValue = replaceInput.value || '';
+            const query = findReplaceState.query;
+            const caseSensitive = findReplaceState.caseSensitive;
+            const count = findReplaceState.matches.length;
+            
+            saveUndoState();
+            
+            findReplaceState.matches.forEach(match => {
+                let cellValue = tableData[match.row][match.col] || '';
+                if (caseSensitive) {
+                    // Case-sensitive: replace all occurrences
+                    cellValue = cellValue.split(query).join(replaceValue);
+                } else {
+                    // Case-insensitive: replace all occurrences
+                    let result = '';
+                    let remaining = cellValue;
+                    const lowerQuery = query.toLowerCase();
+                    while (remaining.length > 0) {
+                        const lowerRemaining = remaining.toLowerCase();
+                        const pos = lowerRemaining.indexOf(lowerQuery);
+                        if (pos >= 0) {
+                            result += remaining.substring(0, pos) + replaceValue;
+                            remaining = remaining.substring(pos + query.length);
+                        } else {
+                            result += remaining;
+                            break;
+                        }
+                    }
+                    cellValue = result;
+                }
+                tableData[match.row][match.col] = cellValue;
+            });
+            
+            notifyChange();
+            renderTable();
+            performSearch();
+            updateStatus('Replaced ' + count + ' occurrence(s)');
+        }
+        
+        function escapeRegExp(str) {
+            // Special chars: . * + ? ^ $ { } ( ) | [ ] \
+            const codes = [46, 42, 43, 63, 94, 36, 123, 125, 40, 41, 124, 91, 93, 92];
+            let result = '';
+            for (let i = 0; i < str.length; i++) {
+                if (codes.indexOf(str.charCodeAt(i)) >= 0) {
+                    result += String.fromCharCode(92) + str[i];
+                } else {
+                    result += str[i];
+                }
+            }
+            return result;
+        }
+        
+        // Find/Replace event listeners setup
+        function setupFindReplaceListeners() {
+            const findInput = document.getElementById('find-input');
+            const findPrevBtn = document.getElementById('find-prev');
+            const findNextBtn = document.getElementById('find-next');
+            const findCloseBtn = document.getElementById('find-close');
+            const replaceOneBtn = document.getElementById('replace-one');
+            const replaceAllBtn = document.getElementById('replace-all');
+            const expandBtn = document.getElementById('expand-btn');
+            const caseSensitiveBtn = document.getElementById('case-sensitive-btn');
+            
+            findInput.addEventListener('input', () => performSearch());
+            findPrevBtn.addEventListener('click', () => findPrev());
+            findNextBtn.addEventListener('click', () => findNext());
+            findCloseBtn.addEventListener('click', () => closeFindDialog());
+            replaceOneBtn.addEventListener('click', () => replaceOne());
+            replaceAllBtn.addEventListener('click', () => replaceAll());
+            
+            // Expand button to toggle replace row
+            expandBtn.addEventListener('click', () => {
+                const replaceRow = document.getElementById('replace-row');
+                const isExpanded = !replaceRow.classList.contains('hidden');
+                if (isExpanded) {
+                    replaceRow.classList.add('hidden');
+                    expandBtn.textContent = '\u25b6'; // ▶
+                    findReplaceState.isReplaceMode = false;
+                } else {
+                    replaceRow.classList.remove('hidden');
+                    expandBtn.textContent = '\u25bc'; // ▼
+                    findReplaceState.isReplaceMode = true;
+                }
+            });
+            
+            // Match Case button toggle
+            caseSensitiveBtn.addEventListener('click', () => {
+                findReplaceState.caseSensitive = !findReplaceState.caseSensitive;
+                if (findReplaceState.caseSensitive) {
+                    caseSensitiveBtn.classList.add('active');
+                } else {
+                    caseSensitiveBtn.classList.remove('active');
+                }
+                performSearch();
+            });
+            
+            // Handle Enter/Shift+Enter in find input
+            findInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                        findPrev();
+                    } else {
+                        findNext();
+                    }
+                    e.preventDefault();
+                } else if (e.key === 'Escape') {
+                    closeFindDialog();
+                    e.preventDefault();
+                }
+            });
+            
+            // Handle Escape in replace input
+            const replaceInput = document.getElementById('replace-input');
+            replaceInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeFindDialog();
+                    e.preventDefault();
+                }
+            });
+        }
+        
+        // Initialize find/replace listeners after DOM is ready
+        setTimeout(setupFindReplaceListeners, 100);
+        
+        // ========== End Find/Replace ==========
         
         // Notify extension that webview is ready
         vscode.postMessage({ type: 'ready' });
@@ -1408,6 +1886,29 @@ export class TableEditorPanel {
         }
         
         document.addEventListener('keydown', (e) => {
+            // Handle Ctrl+F and Ctrl+H for find/replace (works even when find dialog has focus)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                openFindDialog(false);
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+                openFindDialog(true);
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            
+            // Skip if find/replace dialog is open and focus is in it
+            if (findReplaceState.isOpen) {
+                if (e.key === 'Escape') {
+                    closeFindDialog();
+                    e.preventDefault();
+                }
+                return;
+            }
+            
             // Skip if focus is on an input element
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
             
