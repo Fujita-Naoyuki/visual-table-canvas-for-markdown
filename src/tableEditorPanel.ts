@@ -672,6 +672,13 @@ export class TableEditorPanel {
             background-color: var(--vscode-editor-findMatchBackground, rgba(81, 92, 106, 0.7)) !important;
             outline: 2px solid var(--vscode-editor-findMatchBorder, #515c6a);
         }
+        /* Cell merge styles (^ notation for vertical merge) */
+        .cell.merged-from-above {
+            border-top-color: transparent;
+        }
+        .cell.merged-to-below {
+            border-bottom-color: transparent;
+        }
     </style>
 </head>
 <body>
@@ -1147,7 +1154,33 @@ export class TableEditorPanel {
                 for (let col = 0; col < columnCount; col++) {
                     const value = tableData[row][col] || '';
                     const frozenStyle = isFrozenRow ? ' style="top: ' + getColumnHeaderHeight() + 'px;"' : '';
-                    bodyHtml += '<td class="cell" data-row="' + row + '" data-col="' + col + '"' + frozenStyle + '>' + renderMarkdown(value) + '</td>';
+                    
+                    // Cell merge detection (^ notation)
+                    const isMergeMarker = value === '^';
+                    const hasCellAbove = row > 0;
+                    const isMergedFromAbove = isMergeMarker && hasCellAbove;
+                    const nextRowValue = (row < tableData.length - 1) ? (tableData[row + 1][col] || '') : '';
+                    const isMergedToBelow = nextRowValue === '^';
+                    
+                    // Build cell classes
+                    let cellClasses = 'cell';
+                    if (isMergedFromAbove) cellClasses += ' merged-from-above';
+                    if (isMergedToBelow) cellClasses += ' merged-to-below';
+                    
+                    // Determine display value
+                    let displayValue;
+                    if (isMergedFromAbove) {
+                        // ^ with parent above: show empty
+                        displayValue = '';
+                    } else if (value === '\\^') {
+                        // Escaped ^: show as ^
+                        displayValue = renderMarkdown('^');
+                    } else {
+                        // Normal value (including orphaned ^ which shows as ^)
+                        displayValue = renderMarkdown(value);
+                    }
+                    
+                    bodyHtml += '<td class="' + cellClasses + '" data-row="' + row + '" data-col="' + col + '"' + frozenStyle + '>' + displayValue + '</td>';
                 }
                 bodyHtml += '</tr>';
             }
