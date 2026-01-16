@@ -15,6 +15,7 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 - **Excel/Spreadsheet Integration**: Copy to/from Excel, Google Sheets (TSV format)
 - **Keyboard Navigation**: Arrow keys, Tab, Enter, Ctrl+Arrow for data boundary jump
 - **Row/Column Management**: Right-click to insert, delete, or insert copied rows/columns
+- **Vertical Cell Merge**: Use `^` to visually merge with the cell above (removes border)
 - **Markdown Formatting**: Bold, italic, strikethrough, code, links are rendered
 - **Auto Column Width**: Automatic column width adjustment with configurable max width
 - **Freeze First Row**: Pin the first data row as a sticky header (toolbar checkbox)
@@ -70,6 +71,36 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 | Ctrl+Shift+C | Toggle code (`` `text` ``) |
 | Ctrl+V | Paste as link if clipboard is URL |
 
+
+## Vertical Cell Merge
+
+Use `^` notation to visually merge cells vertically (like rowspan in HTML tables).
+
+### How it works
+
+| Cell Content | Display |
+|--------------|---------|
+| `^` (only) | Merges with cell above (border removed, content hidden) |
+| `\^` | Shows as `^` character (escaped) |
+| `text^text` | Shows as-is (no merge) |
+
+### Example
+
+```markdown
+| Header |
+|--------|
+| Value  |
+| ^      |
+| ^      |
+```
+
+This displays as a single merged cell spanning 3 rows.
+
+### Notes
+
+- `^` in the first row (no cell above) displays as `^` text
+- Multiple consecutive `^` cells form one large merged cell
+- All operations (selection, editing, copy/paste) work normally
 
 ## Copy & Paste Behavior
 
