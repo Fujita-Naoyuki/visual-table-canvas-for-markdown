@@ -189,8 +189,8 @@ export class TableEditorPanel {
     }
 
     private async _saveToDocument(data: string[][]) {
-        const { tableToMarkdown } = await import('./tableParser');
-        const newMarkdown = tableToMarkdown(data);
+        const { tableToMarkdownPreserveFormat } = await import('./tableParser');
+        const newMarkdown = tableToMarkdownPreserveFormat(data, this._tableInfo.rawText, this._tableInfo.data);
 
         const document = await vscode.workspace.openTextDocument(this._documentUri);
         const edit = new vscode.WorkspaceEdit();
@@ -1155,12 +1155,13 @@ export class TableEditorPanel {
                     const value = tableData[row][col] || '';
                     const frozenStyle = isFrozenRow ? ' style="top: ' + getColumnHeaderHeight() + 'px;"' : '';
                     
-                    // Cell merge detection (^ notation)
-                    const isMergeMarker = value === '^';
+                    // Cell merge detection (^ notation) - trim to ignore surrounding whitespace
+                    const trimmedValue = value.trim();
+                    const isMergeMarker = trimmedValue === '^';
                     const hasCellAbove = row > 0;
                     const isMergedFromAbove = isMergeMarker && hasCellAbove;
                     const nextRowValue = (row < tableData.length - 1) ? (tableData[row + 1][col] || '') : '';
-                    const isMergedToBelow = nextRowValue === '^';
+                    const isMergedToBelow = nextRowValue.trim() === '^';
                     
                     // Build cell classes
                     let cellClasses = 'cell';
@@ -1172,7 +1173,7 @@ export class TableEditorPanel {
                     if (isMergedFromAbove) {
                         // ^ with parent above: show empty
                         displayValue = '';
-                    } else if (value === '\\^') {
+                    } else if (trimmedValue === '\\^') {
                         // Escaped ^: show as ^
                         displayValue = renderMarkdown('^');
                     } else {
@@ -1788,13 +1789,32 @@ export class TableEditorPanel {
             
             const row = parseInt(cell.dataset.row);
             const col = parseInt(cell.dataset.col);
+            const oldValue = tableData[row][col] || '';
             
             saveUndoState();
             tableData[row][col] = newValue;
             
-            cell.classList.remove('editing');
-            cell.innerHTML = renderMarkdown(newValue);
-            isEditing = false;
+            // Check if merge-related values changed (need full re-render for borders)
+            const oldTrimmed = oldValue.trim();
+            const newTrimmed = newValue.trim();
+            const isMergeRelated = newTrimmed === '^' || newTrimmed === '\\^' || 
+                                   oldTrimmed === '^' || oldTrimmed === '\\^';
+            
+            // Also check if cell above or below has merge marker (border updates needed)
+            const hasAboveMerge = row < tableData.length - 1 && (tableData[row + 1][col] || '').trim() === '^';
+            const hasBelowMerge = row > 0 && (tableData[row - 1][col] || '').trim() === '^';
+            
+            if (isMergeRelated || hasAboveMerge || hasBelowMerge) {
+                // Full re-render needed for merge border updates
+                isEditing = false;
+                renderTable();
+                // Re-select the cell
+                selectSingleCell(row, col);
+            } else {
+                cell.classList.remove('editing');
+                cell.innerHTML = renderMarkdown(newValue);
+                isEditing = false;
+            }
             
             notifyChange();
             updateStatus('Modified');
