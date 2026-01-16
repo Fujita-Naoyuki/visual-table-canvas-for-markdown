@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Table saving now preserves original formatting for unchanged rows (minimizes diffs)
 
+### Fixed
+
+- Pipe character (`|`) in cells now properly escaped/unescaped to prevent table corruption
+
 ## [0.6.1] - 2026-01-15
 
 ### Fixed

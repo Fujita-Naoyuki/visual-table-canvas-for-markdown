@@ -23,9 +23,16 @@ export function parseTableRow(line: string): string[] | null {
         return null;
     }
 
-    // Remove leading and trailing |, then split by |
+    // Remove leading and trailing |, then split by | (but not \|)
     const content = trimmed.slice(1, -1);
-    const cells = content.split('|').map(cell => cell.trim());
+
+    // Use a placeholder for escaped pipes to preserve them during split
+    const PIPE_PLACEHOLDER = '\x00PIPE\x00';
+    const escaped = content.replace(/\\\|/g, PIPE_PLACEHOLDER);
+    const cells = escaped.split('|').map(cell => {
+        // Restore escaped pipes and trim
+        return cell.replace(new RegExp(PIPE_PLACEHOLDER, 'g'), '|').trim();
+    });
 
     return cells;
 }
@@ -114,6 +121,13 @@ export function parseMarkdownTables(text: string): TableInfo[] {
 }
 
 /**
+ * Escapes pipe characters in cell content for Markdown table output
+ */
+function escapePipeInCell(value: string): string {
+    return value.replace(/\|/g, '\\|');
+}
+
+/**
  * Converts table data back to Markdown format
  */
 export function tableToMarkdown(data: string[][]): string {
@@ -121,7 +135,7 @@ export function tableToMarkdown(data: string[][]): string {
         return '';
     }
 
-    // Calculate max width for each column
+    // Calculate max width for each column (after escaping)
     const columnCount = Math.max(...data.map(row => row.length));
     const columnWidths: number[] = [];
 
@@ -129,7 +143,8 @@ export function tableToMarkdown(data: string[][]): string {
         let maxWidth = 3; // Minimum width of 3 for separator
         for (const row of data) {
             if (col < row.length) {
-                maxWidth = Math.max(maxWidth, row[col].length);
+                const escaped = escapePipeInCell(row[col]);
+                maxWidth = Math.max(maxWidth, escaped.length);
             }
         }
         columnWidths.push(maxWidth);
@@ -143,7 +158,8 @@ export function tableToMarkdown(data: string[][]): string {
 
         for (let col = 0; col < columnCount; col++) {
             const cellValue = col < row.length ? row[col] : '';
-            cells.push(cellValue.padEnd(columnWidths[col]));
+            const escaped = escapePipeInCell(cellValue);
+            cells.push(escaped.padEnd(columnWidths[col]));
         }
 
         lines.push('| ' + cells.join(' | ') + ' |');
@@ -201,7 +217,7 @@ export function tableToMarkdownPreserveFormat(data: string[][], originalRawText:
 
     // Helper function to format a single row with minimal padding
     function formatRow(row: string[]): string {
-        const cells = row.map(cell => ` ${cell} `);
+        const cells = row.map(cell => ` ${escapePipeInCell(cell)} `);
         return '|' + cells.join('|') + '|';
     }
 
