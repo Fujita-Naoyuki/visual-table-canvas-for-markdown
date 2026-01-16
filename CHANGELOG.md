@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-01-16
+
+### Added
+
+- Vertical Cell Merge using `^` notation
+  - Enter `^` in a cell to visually merge with the cell above
+  - Border between merged cells is hidden
+  - Use `\^` to display literal `^` character
+  - Multiple consecutive `^` cells form one large merged cell
+
+### Changed
+
+- Table saving now preserves original formatting for unchanged rows (minimizes diffs)
+
+### Fixed
+
+- Pipe character (`|`) in cells now properly escaped/unescaped to prevent table corruption
+
 ## [0.6.1] - 2026-01-15
 
 ### Fixed

@@ -23,9 +23,16 @@ export function parseTableRow(line: string): string[] | null {
         return null;
     }
 
-    // Remove leading and trailing |, then split by |
+    // Remove leading and trailing |, then split by | (but not \|)
     const content = trimmed.slice(1, -1);
-    const cells = content.split('|').map(cell => cell.trim());
+
+    // Use a placeholder for escaped pipes to preserve them during split
+    const PIPE_PLACEHOLDER = '\x00PIPE\x00';
+    const escaped = content.replace(/\\\|/g, PIPE_PLACEHOLDER);
+    const cells = escaped.split('|').map(cell => {
+        // Restore escaped pipes and trim
+        return cell.replace(new RegExp(PIPE_PLACEHOLDER, 'g'), '|').trim();
+    });
 
     return cells;
 }
@@ -114,6 +121,13 @@ export function parseMarkdownTables(text: string): TableInfo[] {
 }
 
 /**
+ * Escapes pipe characters in cell content for Markdown table output
+ */
+function escapePipeInCell(value: string): string {
+    return value.replace(/\|/g, '\\|');
+}
+
+/**
  * Converts table data back to Markdown format
  */
 export function tableToMarkdown(data: string[][]): string {
@@ -121,7 +135,7 @@ export function tableToMarkdown(data: string[][]): string {
         return '';
     }
 
-    // Calculate max width for each column
+    // Calculate max width for each column (after escaping)
     const columnCount = Math.max(...data.map(row => row.length));
     const columnWidths: number[] = [];
 
@@ -129,7 +143,8 @@ export function tableToMarkdown(data: string[][]): string {
         let maxWidth = 3; // Minimum width of 3 for separator
         for (const row of data) {
             if (col < row.length) {
-                maxWidth = Math.max(maxWidth, row[col].length);
+                const escaped = escapePipeInCell(row[col]);
+                maxWidth = Math.max(maxWidth, escaped.length);
             }
         }
         columnWidths.push(maxWidth);
@@ -143,7 +158,8 @@ export function tableToMarkdown(data: string[][]): string {
 
         for (let col = 0; col < columnCount; col++) {
             const cellValue = col < row.length ? row[col] : '';
-            cells.push(cellValue.padEnd(columnWidths[col]));
+            const escaped = escapePipeInCell(cellValue);
+            cells.push(escaped.padEnd(columnWidths[col]));
         }
 
         lines.push('| ' + cells.join(' | ') + ' |');
@@ -157,3 +173,77 @@ export function tableToMarkdown(data: string[][]): string {
 
     return lines.join('\n');
 }
+
+/**
+ * Converts table data back to Markdown format, preserving original formatting for unchanged rows.
+ * This minimizes diffs when saving tables.
+ */
+export function tableToMarkdownPreserveFormat(data: string[][], originalRawText: string, originalData: string[][]): string {
+    if (data.length === 0) {
+        return '';
+    }
+
+    // Parse original lines (skip separator which is at index 1)
+    const originalLines = originalRawText.split('\n');
+    const originalDataLines: string[] = [];
+    for (let i = 0; i < originalLines.length; i++) {
+        if (i === 1) continue; // Skip separator row
+        if (isTableRow(originalLines[i]) && !isSeparatorRow(originalLines[i])) {
+            originalDataLines.push(originalLines[i]);
+        }
+    }
+
+    // Get original separator line
+    const originalSeparator = originalLines.length > 1 ? originalLines[1] : null;
+
+    // Check if column count changed
+    const newColumnCount = Math.max(...data.map(row => row.length));
+    const originalColumnCount = originalData.length > 0 ? Math.max(...originalData.map(row => row.length)) : 0;
+    const columnCountChanged = newColumnCount !== originalColumnCount;
+
+    // If column count changed, regenerate everything
+    if (columnCountChanged) {
+        return tableToMarkdown(data);
+    }
+
+    // Helper function to check if a row's data matches original
+    function rowMatchesOriginal(rowIndex: number): boolean {
+        if (rowIndex >= originalData.length) return false;
+        const newRow = data[rowIndex];
+        const origRow = originalData[rowIndex];
+        if (newRow.length !== origRow.length) return false;
+        return newRow.every((cell, i) => cell === origRow[i]);
+    }
+
+    // Helper function to format a single row with minimal padding
+    function formatRow(row: string[]): string {
+        const cells = row.map(cell => ` ${escapePipeInCell(cell)} `);
+        return '|' + cells.join('|') + '|';
+    }
+
+    const lines: string[] = [];
+
+    for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+        if (rowMatchesOriginal(rowIndex) && rowIndex < originalDataLines.length) {
+            // Use original line formatting
+            lines.push(originalDataLines[rowIndex]);
+        } else {
+            // Format the changed row with minimal padding
+            lines.push(formatRow(data[rowIndex]));
+        }
+
+        // Add separator after header row
+        if (rowIndex === 0) {
+            if (originalSeparator && !columnCountChanged) {
+                lines.push(originalSeparator);
+            } else {
+                // Generate new separator
+                const separator = data[0].map(() => '---').join(' | ');
+                lines.push('| ' + separator + ' |');
+            }
+        }
+    }
+
+    return lines.join('\n');
+}
+
