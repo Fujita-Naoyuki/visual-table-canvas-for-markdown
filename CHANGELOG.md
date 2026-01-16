@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Use `\^` to display literal `^` character
   - Multiple consecutive `^` cells form one large merged cell
 
+### Changed
+
+- Table saving now preserves original formatting for unchanged rows (minimizes diffs)
+
 ## [0.6.1] - 2026-01-15
 
 ### Fixed

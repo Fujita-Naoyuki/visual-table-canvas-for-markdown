@@ -157,3 +157,77 @@ export function tableToMarkdown(data: string[][]): string {
 
     return lines.join('\n');
 }
+
+/**
+ * Converts table data back to Markdown format, preserving original formatting for unchanged rows.
+ * This minimizes diffs when saving tables.
+ */
+export function tableToMarkdownPreserveFormat(data: string[][], originalRawText: string, originalData: string[][]): string {
+    if (data.length === 0) {
+        return '';
+    }
+
+    // Parse original lines (skip separator which is at index 1)
+    const originalLines = originalRawText.split('\n');
+    const originalDataLines: string[] = [];
+    for (let i = 0; i < originalLines.length; i++) {
+        if (i === 1) continue; // Skip separator row
+        if (isTableRow(originalLines[i]) && !isSeparatorRow(originalLines[i])) {
+            originalDataLines.push(originalLines[i]);
+        }
+    }
+
+    // Get original separator line
+    const originalSeparator = originalLines.length > 1 ? originalLines[1] : null;
+
+    // Check if column count changed
+    const newColumnCount = Math.max(...data.map(row => row.length));
+    const originalColumnCount = originalData.length > 0 ? Math.max(...originalData.map(row => row.length)) : 0;
+    const columnCountChanged = newColumnCount !== originalColumnCount;
+
+    // If column count changed, regenerate everything
+    if (columnCountChanged) {
+        return tableToMarkdown(data);
+    }
+
+    // Helper function to check if a row's data matches original
+    function rowMatchesOriginal(rowIndex: number): boolean {
+        if (rowIndex >= originalData.length) return false;
+        const newRow = data[rowIndex];
+        const origRow = originalData[rowIndex];
+        if (newRow.length !== origRow.length) return false;
+        return newRow.every((cell, i) => cell === origRow[i]);
+    }
+
+    // Helper function to format a single row with minimal padding
+    function formatRow(row: string[]): string {
+        const cells = row.map(cell => ` ${cell} `);
+        return '|' + cells.join('|') + '|';
+    }
+
+    const lines: string[] = [];
+
+    for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
+        if (rowMatchesOriginal(rowIndex) && rowIndex < originalDataLines.length) {
+            // Use original line formatting
+            lines.push(originalDataLines[rowIndex]);
+        } else {
+            // Format the changed row with minimal padding
+            lines.push(formatRow(data[rowIndex]));
+        }
+
+        // Add separator after header row
+        if (rowIndex === 0) {
+            if (originalSeparator && !columnCountChanged) {
+                lines.push(originalSeparator);
+            } else {
+                // Generate new separator
+                const separator = data[0].map(() => '---').join(' | ');
+                lines.push('| ' + separator + ' |');
+            }
+        }
+    }
+
+    return lines.join('\n');
+}
+
