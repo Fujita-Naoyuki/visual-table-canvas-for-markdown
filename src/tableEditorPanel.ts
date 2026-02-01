@@ -259,7 +259,7 @@ export class TableEditorPanel {
         th, td {
             border: 1px solid var(--vscode-panel-border);
             padding: 4px 8px;
-            min-width: 60px;
+            min-width: 25px;
             text-align: left;
             word-break: break-all;
             overflow-wrap: break-word;
@@ -2933,7 +2933,7 @@ export class TableEditorPanel {
             // Calculate max width for each column
             const columnWidths = [];
             for (let col = 0; col < colCount; col++) {
-                let maxColWidth = 50; // Minimum width
+                let maxColWidth = 25; // Minimum width
                 
                 // Measure header width
                 measureDiv.textContent = getColumnName(col);
