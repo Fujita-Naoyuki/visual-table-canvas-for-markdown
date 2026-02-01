@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-02-01
+
+### Added
+
+- Zoom Slider: Excel-like zoom control in status bar (50% - 200%)
+  - Slider for smooth zoom adjustment
+  - +/- buttons for 10% step zoom
+  - Percentage display
+
+### Changed
+
+- Reduced minimum cell width from 60px to 25px (fits 2 alphanumeric characters)
+
 ## [0.7.0] - 2026-01-16
 
 ### Added
