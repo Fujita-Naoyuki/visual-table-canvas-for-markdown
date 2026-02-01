@@ -421,6 +421,65 @@ export class TableEditorPanel {
             color: var(--vscode-statusBar-foreground);
             font-size: 12px;
             flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .zoom-btn {
+            width: 20px;
+            height: 20px;
+            padding: 0;
+            background-color: transparent;
+            color: var(--vscode-statusBar-foreground);
+            border: 1px solid var(--vscode-statusBar-foreground);
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .zoom-btn:hover {
+            background-color: var(--vscode-statusBarItem-hoverBackground);
+        }
+        .zoom-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .zoom-slider {
+            width: 100px;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--vscode-scrollbarSlider-background);
+            border-radius: 2px;
+            cursor: pointer;
+        }
+        .zoom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--vscode-statusBar-foreground);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .zoom-slider::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: var(--vscode-statusBar-foreground);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+        .zoom-percent {
+            min-width: 40px;
+            text-align: right;
         }
         .save-btn {
             padding: 4px 12px;
@@ -704,7 +763,15 @@ export class TableEditorPanel {
             <tbody id="table-body"></tbody>
         </table>
     </div>
-    <div class="status-bar" id="status-bar">Loading...</div>
+    <div class="status-bar">
+        <span id="status-bar">Loading...</span>
+        <div class="zoom-controls">
+            <button class="zoom-btn" id="zoom-out-btn" title="縮小">−</button>
+            <input type="range" class="zoom-slider" id="zoom-slider" min="50" max="200" value="100" step="10">
+            <button class="zoom-btn" id="zoom-in-btn" title="拡大">+</button>
+            <span class="zoom-percent" id="zoom-percent">100%</span>
+        </div>
+    </div>
     <div class="context-menu" id="context-menu"></div>
     <!-- Find/Replace Dialog -->
     <div id="find-replace-dialog" class="find-replace-dialog hidden">
@@ -755,6 +822,7 @@ export class TableEditorPanel {
         let isEditing = false;
         let isDragging = false;
         let freezeFirstRow = false;
+        let zoomLevel = 100;
         
         // Selection state
         let selection = {
@@ -2926,6 +2994,47 @@ export class TableEditorPanel {
             freezeFirstRow = e.target.checked;
             renderTable();
             updateStatus(freezeFirstRow ? 'First row frozen' : 'First row unfrozen');
+        });
+        
+        // Zoom controls
+        function applyZoom() {
+            const table = document.getElementById('table-grid');
+            const container = document.getElementById('table-container');
+            table.style.transformOrigin = 'top left';
+            table.style.transform = 'scale(' + (zoomLevel / 100) + ')';
+            
+            // Adjust container to show proper scrollbars
+            // The table's visual size changes but its layout size doesn't with transform
+            // We need to set min-width/min-height based on scaled size for correct scrolling
+        }
+        
+        function updateZoomUI() {
+            document.getElementById('zoom-slider').value = zoomLevel;
+            document.getElementById('zoom-percent').textContent = zoomLevel + '%';
+            document.getElementById('zoom-out-btn').disabled = zoomLevel <= 50;
+            document.getElementById('zoom-in-btn').disabled = zoomLevel >= 200;
+        }
+        
+        document.getElementById('zoom-slider').addEventListener('input', (e) => {
+            zoomLevel = parseInt(e.target.value);
+            applyZoom();
+            updateZoomUI();
+        });
+        
+        document.getElementById('zoom-out-btn').addEventListener('click', () => {
+            if (zoomLevel > 50) {
+                zoomLevel -= 10;
+                applyZoom();
+                updateZoomUI();
+            }
+        });
+        
+        document.getElementById('zoom-in-btn').addEventListener('click', () => {
+            if (zoomLevel < 200) {
+                zoomLevel += 10;
+                applyZoom();
+                updateZoomUI();
+            }
         });
     </script>
 </body>
