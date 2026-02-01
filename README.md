@@ -20,6 +20,7 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 - **Auto Column Width**: Automatic column width adjustment with configurable max width
 - **Freeze First Row**: Pin the first data row as a sticky header (toolbar checkbox)
 - **Find and Replace**: VS Code-like find and replace within the table editor
+- **Zoom Slider**: Excel-like zoom control (50% - 200%) in status bar
 - **Split or Same Tab**: Open editor beside or in the same tab (configurable)
 
 ## Usage
