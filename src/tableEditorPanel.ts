@@ -1277,9 +1277,11 @@ export class TableEditorPanel {
             // Focus the IME capture textarea to enable keyboard navigation and IME input
             document.getElementById('ime-capture').focus();
             
-            // Auto-select first cell if nothing is selected
+            // Restore selection display or auto-select first cell
             if (selection.activeRow < 0 && tableData.length > 0) {
                 selectSingleCell(0, 0);
+            } else if (selection.activeRow >= 0) {
+                updateSelectionDisplay();
             }
             
             // Auto-fit column widths on initial render
@@ -2034,7 +2036,7 @@ export class TableEditorPanel {
             }
             
             // Skip if focus is on an input element
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if ((e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') && e.target.id !== 'ime-capture') return;
             
             if (isEditing) return;
             if (selection.activeRow < 0 || selection.activeCol < 0) return;
@@ -2161,6 +2163,11 @@ export class TableEditorPanel {
                     editTextarea.focus();
                 }
             }
+        });
+        
+        imeCapture.addEventListener('paste', (e) => {
+            e.preventDefault();
+            imeCapture.value = '';
         });
         
         imeCapture.addEventListener('input', () => {
