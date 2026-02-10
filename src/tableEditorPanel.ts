@@ -2121,7 +2121,7 @@ export class TableEditorPanel {
                     e.preventDefault();
                     return;
                 default:
-                    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.isComposing && e.keyCode !== 229) {
                         const activeCell = getActiveCell();
                         if (activeCell) {
                             startEditingWithValue(activeCell, e.key);
@@ -2131,7 +2131,27 @@ export class TableEditorPanel {
                     return;
             }
             
-            selectSingleCell(newRow, newCol);
+            if (e.shiftKey) {
+                selection.endRow = newRow;
+                selection.endCol = newCol;
+                selection.activeRow = newRow;
+                selection.activeCol = newCol;
+                selection.type = 'cell';
+                updateSelectionDisplay();
+                scrollCellIntoView(newRow, newCol);
+            } else {
+                selectSingleCell(newRow, newCol);
+            }
+        });
+        
+        // IME composition: start editing when IME input begins
+        document.addEventListener('compositionstart', (e) => {
+            if (isEditing) return;
+            if (selection.activeRow < 0 || selection.activeCol < 0) return;
+            const activeCell = getActiveCell();
+            if (activeCell) {
+                startEditingWithValue(activeCell, '');
+            }
         });
         
         // Cell copy/paste handling
