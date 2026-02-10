@@ -773,6 +773,7 @@ export class TableEditorPanel {
         </div>
     </div>
     <div class="context-menu" id="context-menu"></div>
+    <textarea id="ime-capture" style="position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;"></textarea>
     <!-- Find/Replace Dialog -->
     <div id="find-replace-dialog" class="find-replace-dialog hidden">
         <div class="find-replace-container">
@@ -1273,12 +1274,14 @@ export class TableEditorPanel {
                 header.addEventListener('contextmenu', handleColHeaderContextMenu);
             });
             
-            // Focus the table container to enable keyboard navigation
-            document.getElementById('table-container').focus();
+            // Focus the IME capture textarea to enable keyboard navigation and IME input
+            document.getElementById('ime-capture').focus();
             
-            // Auto-select first cell if nothing is selected
+            // Restore selection display or auto-select first cell
             if (selection.activeRow < 0 && tableData.length > 0) {
                 selectSingleCell(0, 0);
+            } else if (selection.activeRow >= 0) {
+                updateSelectionDisplay();
             }
             
             // Auto-fit column widths on initial render
@@ -1886,6 +1889,7 @@ export class TableEditorPanel {
             
             notifyChange();
             updateStatus('Modified');
+            document.getElementById('ime-capture').focus();
         }
         
         function cancelEditing(cell) {
@@ -1901,6 +1905,7 @@ export class TableEditorPanel {
             isEditing = false;
             
             updateStatus('Ready');
+            document.getElementById('ime-capture').focus();
         }
         
         function updateStatus(message) {
@@ -2031,7 +2036,7 @@ export class TableEditorPanel {
             }
             
             // Skip if focus is on an input element
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if ((e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') && e.target.id !== 'ime-capture') return;
             
             if (isEditing) return;
             if (selection.activeRow < 0 || selection.activeCol < 0) return;
@@ -2121,7 +2126,7 @@ export class TableEditorPanel {
                     e.preventDefault();
                     return;
                 default:
-                    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.isComposing && e.keyCode !== 229) {
                         const activeCell = getActiveCell();
                         if (activeCell) {
                             startEditingWithValue(activeCell, e.key);
@@ -2131,7 +2136,58 @@ export class TableEditorPanel {
                     return;
             }
             
-            selectSingleCell(newRow, newCol);
+            if (e.shiftKey) {
+                selection.endRow = newRow;
+                selection.endCol = newCol;
+                selection.activeRow = newRow;
+                selection.activeCol = newCol;
+                selection.type = 'cell';
+                updateSelectionDisplay();
+                scrollCellIntoView(newRow, newCol);
+            } else {
+                selectSingleCell(newRow, newCol);
+            }
+        });
+        
+        // IME input handling via hidden textarea
+        const imeCapture = document.getElementById('ime-capture');
+        
+        imeCapture.addEventListener('compositionstart', () => {
+            if (isEditing) return;
+            if (selection.activeRow < 0 || selection.activeCol < 0) return;
+            const activeCell = getActiveCell();
+            if (activeCell) {
+                startEditingWithValue(activeCell, '');
+                const editTextarea = activeCell.querySelector('textarea');
+                if (editTextarea) {
+                    editTextarea.focus();
+                }
+            }
+        });
+        
+        imeCapture.addEventListener('paste', (e) => {
+            e.preventDefault();
+            imeCapture.value = '';
+        });
+        
+        imeCapture.addEventListener('input', () => {
+            if (isEditing) return;
+            if (selection.activeRow < 0 || selection.activeCol < 0) return;
+            const value = imeCapture.value;
+            if (value) {
+                imeCapture.value = '';
+                const activeCell = getActiveCell();
+                if (activeCell) {
+                    startEditingWithValue(activeCell, value);
+                }
+            }
+        });
+        
+        // Refocus ime-capture when clicking on non-editable areas
+        document.getElementById('table-container').addEventListener('mousedown', () => {
+            setTimeout(() => {
+                if (!isEditing) imeCapture.focus();
+            }, 0);
         });
         
         // Cell copy/paste handling
