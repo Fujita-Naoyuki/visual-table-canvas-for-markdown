@@ -13,7 +13,7 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 - **Visual Table Editor**: Edit Markdown tables in a spreadsheet-like interface
 - **Excel-like Operations**: Cell selection, copy/paste, undo/redo
 - **Excel/Spreadsheet Integration**: Copy to/from Excel, Google Sheets (TSV format)
-- **Keyboard Navigation**: Arrow keys, Tab, Enter, Ctrl+Arrow for data boundary jump
+- **Keyboard Navigation**: Arrow keys, Tab, Enter, Shift+Arrow for range selection, Ctrl+Arrow for data boundary jump
 - **Row/Column Management**: Right-click to insert, delete, or insert copied rows/columns
 - **Vertical Cell Merge**: Use `^` to visually merge with the cell above (removes border)
 - **Markdown Formatting**: Bold, italic, strikethrough, code, links are rendered
@@ -37,7 +37,9 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 | Key | Action |
 |-----|--------|
 | Arrow Keys | Navigate cells |
+| Shift+Arrow Keys | Extend selection range |
 | Ctrl+Arrow Keys | Jump to data boundary (Excel-like) |
+| Ctrl+Shift+Arrow Keys | Extend selection to data boundary |
 | Tab | Move to next cell |
 | Shift+Tab | Move to previous cell |
 | Enter | Move to cell below |
