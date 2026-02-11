@@ -155,7 +155,7 @@ This displays as a single merged cell spanning 3 rows.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `visualTableCanvas.openBeside` | `true` | Open editor in split view. Set to `false` to open in same tab. |
+| `visualTableCanvas.openBeside` | `false` | Open editor in same tab. Set to `true` to open in split view. |
 | `visualTableCanvas.defaultMaxColumnWidth` | `300` | Default max column width (px) for auto-fit. |
 
 ## Requirements
