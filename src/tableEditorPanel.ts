@@ -67,7 +67,7 @@ export class TableEditorPanel {
 
         // Read configuration
         const config = vscode.workspace.getConfiguration('visualTableCanvas');
-        const openBeside = config.get<boolean>('openBeside', true);
+        const openBeside = config.get<boolean>('openBeside', false);
         const viewColumn = openBeside ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active;
 
         // If panel already exists, reveal it
