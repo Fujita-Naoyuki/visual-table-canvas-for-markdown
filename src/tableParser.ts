@@ -201,11 +201,6 @@ export function tableToMarkdownPreserveFormat(data: string[][], originalRawText:
     const originalColumnCount = originalData.length > 0 ? Math.max(...originalData.map(row => row.length)) : 0;
     const columnCountChanged = newColumnCount !== originalColumnCount;
 
-    // If column count changed, regenerate everything
-    if (columnCountChanged) {
-        return tableToMarkdown(data);
-    }
-
     // Helper function to check if a row's data matches original
     function rowMatchesOriginal(rowIndex: number): boolean {
         if (rowIndex >= originalData.length) return false;
@@ -221,10 +216,16 @@ export function tableToMarkdownPreserveFormat(data: string[][], originalRawText:
         return '|' + cells.join('|') + '|';
     }
 
+    // Helper function to generate minimal separator
+    function formatSeparator(colCount: number): string {
+        const cells = Array(colCount).fill(' --- ');
+        return '|' + cells.join('|') + '|';
+    }
+
     const lines: string[] = [];
 
     for (let rowIndex = 0; rowIndex < data.length; rowIndex++) {
-        if (rowMatchesOriginal(rowIndex) && rowIndex < originalDataLines.length) {
+        if (!columnCountChanged && rowMatchesOriginal(rowIndex) && rowIndex < originalDataLines.length) {
             // Use original line formatting
             lines.push(originalDataLines[rowIndex]);
         } else {
@@ -237,9 +238,8 @@ export function tableToMarkdownPreserveFormat(data: string[][], originalRawText:
             if (originalSeparator && !columnCountChanged) {
                 lines.push(originalSeparator);
             } else {
-                // Generate new separator
-                const separator = data[0].map(() => '---').join(' | ');
-                lines.push('| ' + separator + ' |');
+                // Generate new minimal separator
+                lines.push(formatSeparator(newColumnCount));
             }
         }
     }

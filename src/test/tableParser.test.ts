@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { parseMarkdownTables, tableToMarkdown, parseTableRow, isSeparatorRow, isTableRow } from '../tableParser';
+import { parseMarkdownTables, tableToMarkdown, tableToMarkdownPreserveFormat, parseTableRow, isSeparatorRow, isTableRow } from '../tableParser';
 
 describe('Table Parser', () => {
     describe('parseMarkdownTables', () => {
@@ -233,6 +233,38 @@ Some text after`;
             const tables = parseMarkdownTables(markdown);
             assert.strictEqual(tables.length, 1);
             assert.strictEqual(tables[0].rawText, markdown);
+        });
+    });
+    describe('tableToMarkdownPreserveFormat', () => {
+        it('should use minimal padding when column count changes (column deleted)', () => {
+            const originalData = [
+                ['条件 / ルール', 'R1', 'R2'],
+                ['プレミアム会員か？', 'Y', 'Y'],
+                ['購入金額は5,000円以上か？', 'Y', 'N']
+            ];
+            const originalRawText = [
+                '| 条件 / ルール | R1 | R2 |',
+                '| --------------- | --- | --- |',
+                '| プレミアム会員か？ | Y | Y |',
+                '| 購入金額は5,000円以上か？ | Y | N |'
+            ].join('\n');
+
+            // R1 column deleted
+            const newData = [
+                ['条件 / ルール', 'R2'],
+                ['プレミアム会員か？', 'Y'],
+                ['購入金額は5,000円以上か？', 'N']
+            ];
+
+            const markdown = tableToMarkdownPreserveFormat(newData, originalRawText, originalData);
+            const lines = markdown.split('\n');
+
+            assert.strictEqual(lines.length, 4);
+            // Verify minimal padding (just one space around cell content)
+            assert.strictEqual(lines[0], '| 条件 / ルール | R2 |');
+            assert.strictEqual(lines[1], '| --- | --- |');
+            assert.strictEqual(lines[2], '| プレミアム会員か？ | Y |');
+            assert.strictEqual(lines[3], '| 購入金額は5,000円以上か？ | N |');
         });
     });
 });
