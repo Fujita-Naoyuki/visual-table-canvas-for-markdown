@@ -2198,6 +2198,9 @@ export class TableEditorPanel {
         document.addEventListener('keydown', (e) => {
             if (isEditing) return;
             
+            // Do not intercept shortcuts while typing in input fields (find/replace, etc.)
+            if ((e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') && e.target.id !== 'ime-capture') return;
+            
             // Calculate selection bounds for row/column operations
             const minRow = Math.min(selection.startRow, selection.endRow);
             const maxRow = Math.max(selection.startRow, selection.endRow);
