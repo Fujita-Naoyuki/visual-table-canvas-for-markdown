@@ -2053,6 +2053,16 @@ export class TableEditorPanel {
             // Leave editing, search, IME, and modified shortcuts to their existing handlers.
             const vimKey = vimNavigation && !e.defaultPrevented && !e.isComposing && e.keyCode !== 229
                 && !e.ctrlKey && !e.metaKey && !e.altKey && !e.target.closest?.('button, a, [contenteditable="true"]');
+            const vimArrow = vimKey && !e.shiftKey ? vimArrows.get(e.key) : undefined;
+            if (vimKey && (vimArrow || e.key === 'V' || e.key === 'Escape')
+                && document.querySelector('#context-menu.visible, #dialog-overlay.visible')) {
+                // Don't move the underlying grid or type into its hidden IME input.
+                // The existing overlay handler still gets Escape.
+                if (e.key !== 'Escape') {
+                    e.preventDefault();
+                }
+                return;
+            }
             if (vimKey && e.key === 'V') {
                 selection = {
                     startRow: row, startCol: 0,
@@ -2069,7 +2079,6 @@ export class TableEditorPanel {
                 e.preventDefault();
                 return;
             }
-            const vimArrow = vimKey && !e.shiftKey ? vimArrows.get(e.key) : undefined;
 
             switch (vimArrow || e.key) {
                 case 'ArrowUp':
