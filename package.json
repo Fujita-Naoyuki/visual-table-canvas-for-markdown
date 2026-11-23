@@ -52,6 +52,11 @@
           "minimum": 50,
           "maximum": 1000,
           "description": "Default maximum column width in pixels for auto-fit."
+        },
+        "visualTableCanvas.vimNavigation": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use h/j/k/l to navigate cells and Shift+V to select whole rows. Applies when opening a table editor."
         }
       }
     }

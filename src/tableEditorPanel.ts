@@ -56,6 +56,7 @@ export class TableEditorPanel {
     private _isDirty: boolean = false;
     private _currentData: string[][];
     private _defaultMaxColumnWidth: number = 300;
+    private readonly _vimNavigation: boolean;
 
     public static createOrShow(
         extensionUri: vscode.Uri,
@@ -115,9 +116,10 @@ export class TableEditorPanel {
         this._tableIndex = tableIndex;
         this._currentData = JSON.parse(JSON.stringify(tableInfo.data));
 
-        // Read configuration for default max column width
+        // Read configuration for this panel.
         const config = vscode.workspace.getConfiguration('visualTableCanvas');
         this._defaultMaxColumnWidth = config.get<number>('defaultMaxColumnWidth', 300);
+        this._vimNavigation = config.get<boolean>('vimNavigation', false) === true;
 
         // Set the webview's initial html content
         this._update();
@@ -818,6 +820,8 @@ export class TableEditorPanel {
     
     <script nonce="${nonce}">
         const vscode = acquireVsCodeApi();
+        const vimNavigation = ${this._vimNavigation};
+        const vimArrows = new Map([['h', 'ArrowLeft'], ['j', 'ArrowDown'], ['k', 'ArrowUp'], ['l', 'ArrowRight']]);
         
         let tableData = [];
         let isEditing = false;
@@ -2045,8 +2049,29 @@ export class TableEditorPanel {
             const col = selection.activeCol;
             let newRow = row;
             let newCol = col;
-            
-            switch (e.key) {
+
+            // Leave editing, search, IME, and modified shortcuts to their existing handlers.
+            const vimKey = vimNavigation && !e.defaultPrevented && !e.isComposing && e.keyCode !== 229
+                && !e.ctrlKey && !e.metaKey && !e.altKey && !e.target.closest?.('button, a, [contenteditable="true"]');
+            if (vimKey && e.key === 'V') {
+                selection = {
+                    startRow: row, startCol: 0,
+                    endRow: row, endCol: tableData[0].length - 1,
+                    activeRow: row, activeCol: col,
+                    type: 'row'
+                };
+                updateSelectionDisplay();
+                e.preventDefault();
+                return;
+            }
+            if (vimKey && e.key === 'Escape' && selection.type === 'row') {
+                selectSingleCell(row, col);
+                e.preventDefault();
+                return;
+            }
+            const vimArrow = vimKey && !e.shiftKey ? vimArrows.get(e.key) : undefined;
+
+            switch (vimArrow || e.key) {
                 case 'ArrowUp':
                     if (e.ctrlKey || e.metaKey) {
                         newRow = findJumpTargetUp(row, col);
@@ -2136,7 +2161,13 @@ export class TableEditorPanel {
                     return;
             }
             
-            if (e.shiftKey) {
+            if (vimArrow && selection.type === 'row') {
+                selection.endRow = newRow;
+                selection.activeRow = newRow;
+                selection.activeCol = newCol;
+                updateSelectionDisplay();
+                scrollCellIntoView(newRow, newCol);
+            } else if (e.shiftKey) {
                 selection.endRow = newRow;
                 selection.endCol = newCol;
                 selection.activeRow = newRow;

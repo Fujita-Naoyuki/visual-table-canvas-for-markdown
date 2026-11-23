@@ -54,6 +54,14 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 | Ctrl+- | Delete selected row(s) / column(s) (header selected) |
 | F2 / Double-click | Start editing cell |
 
+### Optional Vim Navigation
+
+Enable `visualTableCanvas.vimNavigation` and reopen the table editor. In the grid,
+`h` / `j` / `k` / `l` move left / down / up / right instead of starting an edit.
+`Shift+V` selects the current row, `j` / `k` extend or shrink the row selection,
+and `Escape` returns to the active cell. The existing arrow keys and cell-editing
+and find/replace shortcuts still work.
+
 ### Mouse Operations
 
 | Action | Result |
@@ -157,6 +165,7 @@ This displays as a single merged cell spanning 3 rows.
 |---------|---------|-------------|
 | `visualTableCanvas.openBeside` | `false` | Open editor in same tab. Set to `true` to open in split view. |
 | `visualTableCanvas.defaultMaxColumnWidth` | `300` | Default max column width (px) for auto-fit. |
+| `visualTableCanvas.vimNavigation` | `false` | Use Vim keys for table navigation and row selection. |
 
 ## Requirements
 
