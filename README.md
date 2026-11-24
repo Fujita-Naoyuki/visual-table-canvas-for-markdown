@@ -58,9 +58,11 @@ Edit Markdown tables with an Excel-like UI in VS Code.
 
 Enable `visualTableCanvas.vimNavigation` and reopen the table editor. In the grid,
 `h` / `j` / `k` / `l` move left / down / up / right instead of starting an edit.
-`Shift+V` selects the current row, `j` / `k` extend or shrink the row selection,
-and `Escape` returns to the active cell. The existing arrow keys and cell-editing
-and find/replace shortcuts still work.
+Press `v` once to anchor a rectangular selection at the active cell. Use
+`h` / `j` / `k` / `l` to extend or shrink it, just like Shift+Arrow.
+`Shift+V` selects the current row; `j` / `k` extend or shrink the row selection.
+`Escape` exits either mode and leaves only the active cell selected. The existing
+arrow keys, cell-editing shortcuts, and find/replace still work.
 
 ### Mouse Operations
 

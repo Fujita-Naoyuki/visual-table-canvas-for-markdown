@@ -56,7 +56,7 @@
         "visualTableCanvas.vimNavigation": {
           "type": "boolean",
           "default": false,
-          "description": "Use h/j/k/l to navigate cells and Shift+V to select whole rows. Applies when opening a table editor."
+          "description": "Use h/j/k/l to navigate cells, v to select a cell range, and Shift+V to select whole rows. Applies when opening a table editor."
         }
       }
     }
